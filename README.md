@@ -8,7 +8,7 @@ English | [中文](README.zh.md)
 
 ## Platform support
 
-The bundle is pure JavaScript and uses only Node built-ins at runtime, so the same `.tgz` installs on every verified target. The repository's required matrix runs the complete unit, type, build, package-safety, real CLI install/uninstall, and synthetic database lifecycle checks on macOS Intel, macOS Apple Silicon, Windows x64, and Linux x64. It is pinned to DeepSeek Harness Desktop 0.3.5 / Harness 0.1.1-rc.2 for reproducibility.
+The bundle is pure JavaScript and uses only Node built-ins at runtime. CI builds and verifies one canonical `.tgz`, then installs those exact bytes through the pinned Harness CLI on macOS Intel, macOS Apple Silicon, Windows x64, and Linux x64. The required checks include unit tests, type checks, package safety, real CLI install/uninstall, and the synthetic database lifecycle. The matrix is pinned to DeepSeek Harness Desktop 0.3.5 / Harness 0.1.1-rc.2 for reproducibility.
 
 Windows ARM and Linux ARM are not claimed until stable native runners and a shipped Harness target are available. There is no platform-specific database payload or native addon inside the package.
 

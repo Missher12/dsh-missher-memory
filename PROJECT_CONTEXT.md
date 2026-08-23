@@ -48,7 +48,7 @@
 - v2 已完成：默认关闭的候选捕获、审核、编辑、合并、固定、遗忘、导出和项目删除。
 - v3 已完成：独立默认关闭的自动召回、顶层会话限制、来源标注和注入预算。
 - Harness 原生设置页、Host/Client RPC、独立安装包验证和 packaged smoke 已实现；交付阶段只保留最终复验与成品摘要。
-- 独立公开仓库交付使用一个通用 `.tgz`；必需 CI 矩阵在 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 上，针对固定的 Desktop 0.3.5 / Harness 0.1.1-rc.2 CLI 执行测试、构建、包安全验证和真实安装/卸载 smoke。
+- 独立公开仓库只生成一个 canonical 通用 `.tgz`；必需 CI 矩阵在 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 上下载相同字节，并针对固定的 Desktop 0.3.5 / Harness 0.1.1-rc.2 CLI 执行测试、包安全验证和真实安装/卸载 smoke。
 
 ## 已知问题与风险
 

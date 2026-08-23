@@ -9,8 +9,49 @@ permissions:
   contents: read
 
 jobs:
+  package:
+    name: Canonical universal package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout plugin
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm 11.7.0
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+
+      - name: Install Node 22.19.0
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.19.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Test, build, and verify canonical package
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+          pnpm typecheck
+          pnpm build
+          pnpm pack --pack-destination ./dist
+          node scripts/verify-package.mjs ./dist/dsh-missher-memory-0.1.0.tgz > ./dist/package-verification.json
+
+      - name: Upload canonical universal package
+        uses: actions/upload-artifact@v7
+        with:
+          name: dsh-missher-memory-universal
+          if-no-files-found: error
+          path: |
+            dist/dsh-missher-memory-0.1.0.tgz
+            dist/package-verification.json
+
   native-plugin:
     name: ${{ matrix.name }}
+    needs: package
     strategy:
       fail-fast: false
       matrix:
@@ -48,7 +89,7 @@ jobs:
           persist-credentials: false
 
       - name: Install pnpm 11.7.0
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 11.7.0
 
@@ -59,14 +100,20 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Install, test, and pack plugin
+      - name: Install and test plugin on native runner
         run: |
           pnpm install --frozen-lockfile
           pnpm test
           pnpm typecheck
-          pnpm build
-          pnpm pack --pack-destination ./dist
-          node scripts/verify-package.mjs ./dist/dsh-missher-memory-0.1.0.tgz > ./dist/package-verification.json
+
+      - name: Download canonical universal package
+        uses: actions/download-artifact@v8
+        with:
+          name: dsh-missher-memory-universal
+          path: dist/universal
+
+      - name: Verify canonical package on native runner
+        run: node scripts/verify-package.mjs ./dist/universal/dsh-missher-memory-0.1.0.tgz > ./dist/package-verification.json
 
       - name: Build exact Harness CLI
         working-directory: .harness-035
@@ -77,15 +124,14 @@ jobs:
           pnpm run build:lib
 
       - name: Run native install and lifecycle smoke
-        run: node scripts/native-smoke.mjs --platform ${{ matrix.platform }} --archive ./dist/dsh-missher-memory-0.1.0.tgz --cli ./.harness-035/apps/cli/lib/bin.js > ./dist/native-smoke.json
+        run: node scripts/native-smoke.mjs --platform ${{ matrix.platform }} --archive ./dist/universal/dsh-missher-memory-0.1.0.tgz --cli ./.harness-035/apps/cli/lib/bin.js > ./dist/native-smoke.json
 
       - name: Upload acceptance evidence
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dsh-missher-memory-${{ matrix.artifact }}
           if-no-files-found: error
           path: |
-            dist/dsh-missher-memory-0.1.0.tgz
+            dist/universal/dsh-missher-memory-0.1.0.tgz
             dist/package-verification.json
             dist/native-smoke.json

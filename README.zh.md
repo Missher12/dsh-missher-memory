@@ -8,7 +8,7 @@
 
 ## 平台支持
 
-bundle 运行时是纯 JavaScript，只使用 Node 内建能力，因此所有已验证平台安装的是同一个 `.tgz`。仓库的必需矩阵会在 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 上分别执行完整单元测试、类型检查、构建、安装包安全检查、真实 CLI 安装/卸载，以及合成数据库生命周期 smoke。流水线固定到 DeepSeek Harness Desktop 0.3.5 / Harness 0.1.1-rc.2，以保证结果可复现。
+bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建并验证一个 canonical `.tgz`，再让 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 通过固定的 Harness CLI 安装完全相同的字节。必需检查包括单元测试、类型检查、安装包安全、真实 CLI 安装/卸载和合成数据库生命周期。矩阵固定到 DeepSeek Harness Desktop 0.3.5 / Harness 0.1.1-rc.2，以保证结果可复现。
 
 在有稳定原生 runner 和已交付 Harness 目标前，不宣称支持 Windows ARM 与 Linux ARM。安装包中不包含平台专属数据库内容或原生 addon。
 
