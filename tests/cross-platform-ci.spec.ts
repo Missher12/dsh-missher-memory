@@ -36,6 +36,7 @@ describe('cross-platform CI contract', () => {
     expect(workflow).toContain('scripts/verify-package.mjs')
     expect(workflow).toContain('scripts/native-smoke.mjs --platform ${{ matrix.platform }}')
     expect(workflow).toContain('--cli ./.harness-035/apps/cli/lib/bin.js')
+    expect(workflow).toContain('NODE_OPTIONS: --max-old-space-size=6144')
   })
 
   it('uses read-only workflow permissions and preserves the evidence', async () => {

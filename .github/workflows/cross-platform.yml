@@ -70,6 +70,8 @@ jobs:
 
       - name: Build exact Harness CLI
         working-directory: .harness-035
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           pnpm install --frozen-lockfile
           pnpm run build:lib
