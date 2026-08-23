@@ -49,9 +49,17 @@ describe('explicit project binding state', () => {
         sessionKeys: ['session-alpha'],
       },
     })
-    expect((await lstat(stateDirectory)).mode & 0o777).toBe(0o700)
-    expect((await lstat(join(stateDirectory, 'state.db'))).mode & 0o777).toBe(0o600)
-    expect((await lstat(join(stateDirectory, 'key.bin'))).mode & 0o777).toBe(0o600)
+    const stateEntry = await lstat(stateDirectory)
+    const databaseEntry = await lstat(join(stateDirectory, 'state.db'))
+    const keyEntry = await lstat(join(stateDirectory, 'key.bin'))
+    expect(stateEntry.isDirectory()).toBe(true)
+    expect(databaseEntry.isFile()).toBe(true)
+    expect(keyEntry.isFile()).toBe(true)
+    if (process.platform !== 'win32') {
+      expect(stateEntry.mode & 0o777).toBe(0o700)
+      expect(databaseEntry.mode & 0o777).toBe(0o600)
+      expect(keyEntry.mode & 0o777).toBe(0o600)
+    }
     const stateBytes = await readFile(join(stateDirectory, 'state.db'))
     expect(stateBytes.includes(Buffer.from(cwd))).toBe(false)
     expect(stateBytes.includes(Buffer.from('session-alpha'))).toBe(false)
