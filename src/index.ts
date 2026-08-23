@@ -35,6 +35,8 @@ export interface PluginConfig {
 
 interface ResolvedPluginConfig {
   enabled: boolean
+  captureEnabled: boolean
+  recallEnabled: boolean
   searchTimeoutMs: number
   maxSearchResults: number
   searchByteBudget: number
@@ -75,6 +77,8 @@ export function apply(ctx: Context, input: PluginConfig = {}): void {
     if (!config.enabled) return
     const state = new StateStore({
       stateDirectory: ctx.dshHomePath('missher-memory'),
+      defaultCaptureEnabled: config.captureEnabled,
+      defaultRecallEnabled: config.recallEnabled,
       defaultRecallLimit: config.recallLimit,
       defaultRecallByteBudget: config.recallByteBudget,
     })
@@ -146,6 +150,8 @@ export function apply(ctx: Context, input: PluginConfig = {}): void {
 function resolveConfig(input: PluginConfig): ResolvedPluginConfig {
   const config: ResolvedPluginConfig = {
     enabled: input.enabled ?? true,
+    captureEnabled: input.captureEnabled ?? true,
+    recallEnabled: input.recallEnabled ?? true,
     searchTimeoutMs: input.searchTimeoutMs ?? 1_500,
     maxSearchResults: input.maxSearchResults ?? 10,
     searchByteBudget: input.searchByteBudget ?? 6_000,

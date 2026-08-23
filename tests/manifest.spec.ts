@@ -86,7 +86,7 @@ describe('standalone bundle manifest', () => {
 
     expect(patch).toContain('id: missher-memory')
     expect(patch).toContain('name: dsh-missher-memory')
-    expect(patch).toContain('captureEnabled: false')
-    expect(patch).toContain('recallEnabled: false')
+    expect(patch).toContain('captureEnabled: true')
+    expect(patch).toContain('recallEnabled: true')
   })
 })

@@ -3,8 +3,8 @@
       name: dsh-missher-memory
       config:
         enabled: true
-        captureEnabled: false
-        recallEnabled: false
+        captureEnabled: true
+        recallEnabled: true
         searchTimeoutMs: 1500
         maxSearchResults: 10
         searchByteBudget: 6000

@@ -17,8 +17,8 @@ Windows ARM and Linux ARM are not claimed until stable native runners and a ship
 - `memory_search` searches external memory and reviewed plugin memory only through the active session's confirmed project binding, with source, time, and a stable reference on each result.
 - cwd creates an in-memory binding candidate only. Durable state keeps an irreversible project key, basename, short hash, and encrypted external session identifiers; it never stores an absolute cwd.
 - Project memory and personal preferences use separate scopes. Project search cannot read another project, and personal search does not read the external project database.
-- Candidate capture defaults off. Session disposal may create review candidates only after the user binds the project and explicitly enables capture.
-- Automatic recall defaults off independently. When enabled, it injects reviewed memory only for top-level user turns, with at most 5 results and 6000 bytes plus source, time, and an untrusted-history warning.
+- Candidate capture defaults on for newly bound projects. Session disposal creates review candidates only after the user explicitly binds the project; candidates never become approved memory automatically.
+- Automatic recall defaults on for newly bound projects. It injects reviewed memory only for top-level user turns, with at most 5 results and 6000 bytes plus source, time, and an untrusted-history warning.
 - Missing, damaged, unsafe, or timed-out databases return stable states and fail open without blocking Harness startup or a session.
 
 ## Install
@@ -26,7 +26,7 @@ Windows ARM and Linux ARM are not claimed until stable native runners and a ship
 The plugin requires a DeepSeek Harness 0.1.x Host with Node `^22.19.0` or `>=24`. The delivered tarball needs no Python, shell script, or native dependency build:
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.0.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.1.tgz
 dsh --profile web --dump-config
 ```
 
@@ -39,7 +39,7 @@ If the external database is not at `$HOME/.local/share/missher-memory/tencentdb/
 1. Open a top-level session in the target project so Settings shows its basename and short-hash candidate.
 2. Review the source list, which contains record counts and time ranges but no record text, and select only sources that belong to the project.
 3. Confirm a new binding or link another worktree candidate to an existing project.
-4. Enable candidate capture or automatic recall separately if needed. Both remain off by default.
+4. Candidate capture and automatic recall start enabled for a newly bound project and remain independently switchable. Existing project settings are never migrated or overwritten.
 
 The legacy database has no trustworthy project id. The plugin never classifies sources from cwd, text similarity, or time. A wrong source choice assigns history to the wrong project, so the first binding requires human review.
 
@@ -85,8 +85,8 @@ Uninstall removes the bundle and profile patch but preserves `$DSH_HOME/missher-
 Before distribution, run:
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.0.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.0.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.1.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.1.tgz
 ```
 
 `native-smoke.mjs` uses synthetic data only. Passing `--cli /absolute/path/to/dsh-cli.js` additionally installs, composes, and removes the tarball in a temporary profile.

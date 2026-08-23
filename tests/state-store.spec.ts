@@ -138,6 +138,33 @@ describe('explicit project binding state', () => {
     })
   })
 
+  it('applies deployment capture and recall defaults only to newly bound projects', async () => {
+    const { cwd, secondCwd, stateDirectory } = await fixture()
+    const store = new StateStore({
+      stateDirectory,
+      defaultCaptureEnabled: true,
+      defaultRecallEnabled: true,
+    })
+
+    const first = await store.bindProject({ cwd, sessionKeys: [] })
+    expect(first).toMatchObject({
+      status: 'bound',
+      project: { captureEnabled: true, recallEnabled: true },
+    })
+    if (first.status !== 'bound') return
+    await store.updateSettings(first.project.projectKey, { captureEnabled: false, recallEnabled: false })
+
+    const second = await store.bindProject({ cwd: secondCwd, sessionKeys: [] })
+    expect(second).toMatchObject({
+      status: 'bound',
+      project: { captureEnabled: true, recallEnabled: true },
+    })
+    await expect(store.lookupProject(cwd)).resolves.toMatchObject({
+      status: 'bound',
+      project: { captureEnabled: false, recallEnabled: false },
+    })
+  })
+
   it('detects a replaced local key and tampered ciphertext without leaking values', async () => {
     const { cwd, stateDirectory } = await fixture()
     const store = new StateStore({ stateDirectory })

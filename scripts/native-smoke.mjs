@@ -49,7 +49,7 @@ async function main() {
       candidateId: initial.projectCandidate.candidateId,
       sourceIds: initial.sources.map(source => source.sourceId),
     })
-    if (boundA.project === null || boundA.project.captureEnabled || boundA.project.recallEnabled) {
+    if (boundA.project === null || !boundA.project.captureEnabled || !boundA.project.recallEnabled) {
       throw new Error('binding_defaults_invalid')
     }
     const firstSearch = await executeSearch(mounted.tool, synthetic.projectA, 'architecture')
@@ -168,7 +168,7 @@ async function main() {
 function parseArgs(args) {
   const options = {
     platform: 'current',
-    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.1.0.tgz'),
+    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.1.1.tgz'),
     cli: undefined,
     profile: 'memory-smoke',
   }
@@ -275,8 +275,6 @@ async function mount(runtime, dshHome, databaseRoot) {
   try {
     fiber = ctx.plugin(runtime.plugin, {
       enabled: true,
-      captureEnabled: false,
-      recallEnabled: false,
       searchTimeoutMs: 100,
       maxSearchResults: 5,
       searchByteBudget: 3_000,

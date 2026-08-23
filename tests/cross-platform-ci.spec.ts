@@ -40,7 +40,7 @@ describe('cross-platform CI contract', () => {
     expect(workflow).toContain('pnpm build')
     expect(workflow).toContain('scripts/verify-package.mjs')
     expect(workflow).toContain('scripts/native-smoke.mjs --platform ${{ matrix.platform }}')
-    expect(workflow).toContain('--archive ./dist/universal/dsh-missher-memory-0.1.0.tgz')
+    expect(workflow).toContain('--archive ./dist/universal/dsh-missher-memory-0.1.1.tgz')
     expect(workflow).toContain('--cli ./.harness-035/apps/cli/lib/bin.js')
     expect(workflow).toContain('NODE_OPTIONS: --max-old-space-size=6144')
   })

@@ -34,6 +34,8 @@ export type ProjectSummary = Omit<BoundProject, 'sessionKeys'>
 /** Construction options for the lazy state store. */
 export interface StateStoreOptions {
   stateDirectory: string
+  defaultCaptureEnabled?: boolean | undefined
+  defaultRecallEnabled?: boolean | undefined
   defaultRecallLimit?: number | undefined
   defaultRecallByteBudget?: number | undefined
 }
@@ -122,6 +124,8 @@ interface BindingRow {
 export class StateStore {
   readonly #stateDirectory: string
   readonly #databasePath: string
+  readonly #defaultCaptureEnabled: boolean
+  readonly #defaultRecallEnabled: boolean
   readonly #defaultRecallLimit: number
   readonly #defaultRecallByteBudget: number
 
@@ -133,6 +137,8 @@ export class StateStore {
   constructor(options: StateStoreOptions) {
     this.#stateDirectory = options.stateDirectory
     this.#databasePath = join(options.stateDirectory, 'state.db')
+    this.#defaultCaptureEnabled = options.defaultCaptureEnabled ?? false
+    this.#defaultRecallEnabled = options.defaultRecallEnabled ?? false
     this.#defaultRecallLimit = options.defaultRecallLimit ?? 3
     this.#defaultRecallByteBudget = options.defaultRecallByteBudget ?? 3_000
   }
@@ -233,9 +239,16 @@ export class StateStore {
       )
       database
         .prepare(
-          'INSERT OR IGNORE INTO settings (project_key, capture_enabled, recall_enabled, recall_limit, recall_byte_budget, updated_at) VALUES (?, 0, 0, ?, ?, ?)',
+          'INSERT OR IGNORE INTO settings (project_key, capture_enabled, recall_enabled, recall_limit, recall_byte_budget, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
         )
-        .run(projectKey, this.#defaultRecallLimit, this.#defaultRecallByteBudget, now())
+        .run(
+          projectKey,
+          Number(this.#defaultCaptureEnabled),
+          Number(this.#defaultRecallEnabled),
+          this.#defaultRecallLimit,
+          this.#defaultRecallByteBudget,
+          now(),
+        )
       const insertBinding = database.prepare(
         'INSERT OR REPLACE INTO bindings (project_key, session_hash, session_ciphertext, created_at) VALUES (?, ?, ?, ?)',
       )

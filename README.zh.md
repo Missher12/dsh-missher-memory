@@ -17,8 +17,8 @@ bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建�
 - `memory_search` 按当前会话已确认的项目绑定，只读搜索外部记忆和已审核的插件记忆，并显示来源、时间和稳定引用。
 - cwd 只用于生成一次绑定候选。持久状态只保存不可逆项目键、basename、短 hash 和加密后的外部 session 标识，不保存绝对 cwd。
 - 项目记忆与个人偏好分层。项目搜索不会读取其他项目；个人搜索不会读取外部项目数据库。
-- 候选记忆捕获默认关闭。只有先绑定项目，再明确开启捕获，session 结束时才会生成待审核候选。
-- 自动召回独立默认关闭。开启后只在顶层用户轮次注入已审核内容，最多 5 条、6000 字节，并附来源、时间和“不可信历史内容”提示。
+- 新绑定项目默认开启候选记忆捕获。用户明确绑定项目后，session 结束时只会生成待审核候选，绝不会自动成为已审核记忆。
+- 新绑定项目默认开启自动召回。它只在顶层用户轮次注入已审核内容，最多 5 条、6000 字节，并附来源、时间和“不可信历史内容”提示。
 - 数据库缺失、损坏、路径不安全或查询超时时，插件返回稳定状态并失败开放，不阻止 Harness 启动和会话。
 
 ## 安装
@@ -26,7 +26,7 @@ bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建�
 需要 DeepSeek Harness 0.1.x Host（Node `^22.19.0` 或 `>=24`）。使用交付的 tarball，不需要 Python、shell 脚本或原生依赖构建：
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.0.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.1.tgz
 dsh --profile web --dump-config
 ```
 
@@ -39,7 +39,7 @@ dsh --profile web --dump-config
 1. 在目标项目目录打开一个顶层会话，让设置页出现 basename 和短 hash 候选。
 2. 查看只包含记录数量和时间范围的来源列表，选择确实属于该项目的来源。
 3. 确认绑定，或把另一个 worktree 候选链接到已存在项目。
-4. 按需要单独开启“候选记忆捕获”或“自动召回”。两者默认都关闭。
+4. 新绑定项目会默认开启“候选记忆捕获”和“自动召回”，两者仍可独立关闭；已有项目设置不会被迁移或覆盖。
 
 旧数据库没有可信 project id，插件不会根据 cwd、相似文本或时间自动归类来源。来源选择错误会把历史归入错误项目；首次绑定前应人工确认。
 
@@ -85,8 +85,8 @@ dsh --profile web --dump-config
 发布前可运行：
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.0.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.0.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.1.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.1.tgz
 ```
 
 `native-smoke.mjs` 只使用合成数据库；传入 `--cli /absolute/path/to/dsh-cli.js` 时还会在临时 profile 中真实安装、组合并卸载 tarball。
