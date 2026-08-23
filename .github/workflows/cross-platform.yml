@@ -1,0 +1,89 @@
+name: Cross-platform Harness verification
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-plugin:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS Intel
+            os: macos-15-intel
+            platform: darwin-x64
+            artifact: macos-intel
+          - name: macOS Apple Silicon
+            os: macos-15
+            platform: darwin-arm64
+            artifact: macos-apple-silicon
+          - name: Windows x64
+            os: windows-2025
+            platform: win32-x64
+            artifact: windows-x64
+          - name: Linux x64
+            os: ubuntu-24.04
+            platform: linux-x64
+            artifact: linux-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout plugin
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Checkout DeepSeek Harness Desktop 0.3.5
+        uses: actions/checkout@v6
+        with:
+          repository: Missher12/deepseek-harness-desktop
+          ref: 368f889ee796e1c09cba342ff3855a84ad908f74
+          path: .harness-035
+          persist-credentials: false
+
+      - name: Install pnpm 11.7.0
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Install Node 22.19.0
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.19.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install, test, and pack plugin
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+          pnpm typecheck
+          pnpm build
+          pnpm pack --pack-destination ./dist
+          node scripts/verify-package.mjs ./dist/dsh-missher-memory-0.1.0.tgz > ./dist/package-verification.json
+
+      - name: Build exact Harness CLI
+        working-directory: .harness-035
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build:lib
+
+      - name: Run native install and lifecycle smoke
+        run: node scripts/native-smoke.mjs --platform ${{ matrix.platform }} --archive ./dist/dsh-missher-memory-0.1.0.tgz --cli ./.harness-035/apps/cli/lib/bin.js > ./dist/native-smoke.json
+
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh-missher-memory-${{ matrix.artifact }}
+          if-no-files-found: error
+          path: |
+            dist/dsh-missher-memory-0.1.0.tgz
+            dist/package-verification.json
+            dist/native-smoke.json

@@ -1,0 +1,12 @@
+- insert:
+    - id: missher-memory
+      name: dsh-missher-memory
+      config:
+        enabled: true
+        captureEnabled: false
+        recallEnabled: false
+        searchTimeoutMs: 1500
+        maxSearchResults: 10
+        searchByteBudget: 6000
+        recallLimit: 3
+        recallByteBudget: 3000

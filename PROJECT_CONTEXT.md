@@ -1,0 +1,61 @@
+# DeepSeek Harness 超级记忆插件项目上下文
+
+## 项目目标
+
+`dsh-missher-memory` 是独立安装的 DeepSeek Harness Cordis bundle。它面向跨会话、跨阶段的超长项目，在不复制或修改现有记忆数据库的前提下，提供按项目隔离的只读检索、候选记忆审核和可选自动召回。
+
+## 技术架构
+
+- Host 插件负责项目绑定、只读搜索、候选记忆生命周期、设置和失败开放。
+- Client 插件使用 Harness 原生 `settings.section` 展示连接、项目、召回、候选记忆和来源。
+- SQLite Worker 使用 Node 内建 `node:sqlite`，通过固定预编译 SQL 只读查询外部 `vectors.db`；超时后终止并重建 Worker。
+- 插件自有 `state.db` 只保存不可逆项目键、项目 basename、短 hash、设置、候选记忆和审核后的记忆；不保存绝对 cwd。
+- Bundle 通过 `dsh.bundle.patch` 和 `cordis.patch.yml` 安装，不修改 Harness 核心源码。
+
+## 核心安全不变量
+
+1. `vectors.db` 始终只读，绝不复制、迁移、打包或写入。
+2. 未显式完成项目绑定且未开启“候选记忆捕获”时，不创建 `state.db`、pending candidate 或任何插件状态文件。
+3. 只读搜索不得产生插件状态；自动召回独立默认关闭。
+4. cwd 仅作为绑定候选；用户确认的 binding 才是长期项目身份。
+5. 项目记忆和个人偏好分层，未绑定项目不能检索或注入项目内容。
+6. 缺失数据库显示“未配置”，不会静默创建空数据库。
+7. 凭据、私钥、敏感路径、原始工具输出和其他隐私内容默认拒绝记录。
+8. 插件错误、数据库错误和超时均失败开放，不阻止 Harness 启动或会话。
+
+## 分阶段范围
+
+- v1：只读全文搜索、显式项目绑定、来源与时间展示。
+- v2：默认关闭的候选捕获、候选箱审核、编辑、合并、固定、遗忘、项目删除和导出。
+- v3：独立默认关闭的自动召回、顶层会话限制和严格注入预算。
+
+## 文件结构
+
+- `src/host/`：Host 插件、项目绑定、搜索、状态、候选和召回。
+- `src/client/`：设置页 section、样式和本地化。
+- `src/remote/`：Host/Client RPC 接口。
+- `src/workers/`：只读 SQLite Worker。
+- `tests/`：安全、隔离、生命周期、打包和失败开放测试。
+- `scripts/`：安装包验证和 packaged smoke。
+- `docs/`：设计、计划、安装/卸载和数据保留说明。
+
+## 当前进度
+
+- 已完成 Harness 插件协议、上下文流、项目身份来源和真实 SQLite schema 的只读检查。
+- 已确认外部数据库无显式 project id，需要插件自有的用户确认 binding 才能安全隔离。
+- 已批准方案 A：单一预构建 DSH bundle，Node 内建 SQLite Worker，无 Python/shell 运行时。
+- v1 已完成：只读搜索、显式项目绑定、来源/时间/引用展示和跨项目隔离。
+- v2 已完成：默认关闭的候选捕获、审核、编辑、合并、固定、遗忘、导出和项目删除。
+- v3 已完成：独立默认关闭的自动召回、顶层会话限制、来源标注和注入预算。
+- Harness 原生设置页、Host/Client RPC、独立安装包验证和 packaged smoke 已实现；交付阶段只保留最终复验与成品摘要。
+- 独立公开仓库交付使用一个通用 `.tgz`；必需 CI 矩阵在 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 上，针对固定的 Desktop 0.3.5 / Harness 0.1.1-rc.2 CLI 执行测试、构建、包安全验证和真实安装/卸载 smoke。
+
+## 已知问题与风险
+
+- 旧数据库没有可信 project id，首次绑定需要用户把外部 session keys 显式归入项目；插件不得自动推断。
+- `node:sqlite` 查询是同步 API，必须放在 Worker 中才能实现硬超时。
+- 外部数据库目录中发现过明文凭据风险；插件不会读取相关脚本，凭据需要在源系统侧轮换并改为环境变量。
+- 主仓库 `.git` 在当前沙箱只读，因此本任务使用同一忽略目录下的隔离 clone；工作分支和索引仍完全独立。
+- 旧数据库来源必须由用户首次人工归类；错误选择来源会造成项目误绑定，插件不会用启发式自动纠正。
+- 候选和批准正文以明文保存在权限受限的插件 `state.db`；本机磁盘加密、导出文件保护和最终删除仍由用户负责。
+- Windows ARM 与 Linux ARM 当前没有稳定原生验收 runner 和已交付 Desktop 目标，因此保持未声明支持；插件运行时不含原生 addon，未来可通过扩展 CI 矩阵验证。
