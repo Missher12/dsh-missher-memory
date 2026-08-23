@@ -50,4 +50,8 @@ describe('cross-platform CI contract', () => {
     expect(workflow).toContain('package-verification.json')
     expect(workflow).toContain('native-smoke.json')
   })
+
+  it('keeps packaged text LF-only on Windows checkouts', async () => {
+    await expect(readFile(join(root, '.gitattributes'), 'utf8')).resolves.toBe('* text=auto eol=lf\n')
+  })
 })
