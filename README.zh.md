@@ -8,7 +8,7 @@
 
 ## 平台支持
 
-bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建并验证一个 canonical `.tgz`，再让 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 通过固定的 Harness CLI 安装完全相同的字节。必需检查包括单元测试、类型检查、安装包安全、真实 CLI 安装/卸载和合成数据库生命周期。矩阵固定到 DeepSeek Harness Desktop 0.3.5 / Harness 0.1.1-rc.2，以保证结果可复现。
+bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建并验证一个 canonical `.tgz`，再让 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 通过固定的 Harness CLI 安装完全相同的字节。必需检查包括单元测试、类型检查、安装包安全、真实 CLI 安装/卸载和合成数据库生命周期。矩阵固定到 DeepSeek Harness Desktop 0.3.6 / Harness 0.1.1-rc.2，以保证结果可复现。
 
 在有稳定原生 runner 和已交付 Harness 目标前，不宣称支持 Windows ARM 与 Linux ARM。安装包中不包含平台专属数据库内容或原生 addon。
 
@@ -26,13 +26,13 @@ bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建�
 需要 DeepSeek Harness 0.1.x Host（Node `^22.19.0` 或 `>=24`）。使用交付的 tarball，不需要 Python、shell 脚本或原生依赖构建：
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.1.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.2.tgz
 dsh --profile web --dump-config
 ```
 
 配置中同时出现 `dsh-missher-memory` 和 `missher-memory` 即表示 bundle patch 已进入 profile。重启 Harness 后，在“设置 → 超级记忆”完成首次绑定。
 
-如果外部数据库不在默认的 `$HOME/.local/share/missher-memory/tencentdb/vectors.db`，启动 Harness 前把 `MISSHER_TENCENTDB_DIR` 设为包含 `vectors.db` 的现有绝对目录。插件不会创建缺失目录或空数据库，也拒绝符号链接和逃逸路径。
+全新 Windows/macOS 安装不需要 `vectors.db`：内置项目记忆在用户确认绑定后使用插件自有的 `state.db`。`vectors.db` 只是兼容旧记忆的可选只读来源。如果它不在默认的 `$HOME/.local/share/missher-memory/tencentdb/vectors.db`，启动 Harness 前可把 `MISSHER_TENCENTDB_DIR` 设为包含 `vectors.db` 的现有绝对目录。插件不会创建缺失目录或空数据库，也拒绝符号链接和逃逸路径。
 
 ## 首次绑定
 
@@ -76,7 +76,7 @@ dsh --profile web --dump-config
 
 ## 状态说明
 
-- `未配置`：目标目录或 `vectors.db` 不存在；插件不会代建。
+- `未连接（可选）`：旧记忆目录或 `vectors.db` 不存在；内置项目记忆仍正常可用，插件不会代建外部库。
 - `路径不安全`：目录、数据库或插件状态是符号链接、非普通文件，或路径不满足包含规则。
 - `格式不兼容`：外部表/FTS5 结构或插件状态 schema 不受支持。
 - `损坏`：SQLite 无法以只读方式验证。
@@ -85,8 +85,8 @@ dsh --profile web --dump-config
 发布前可运行：
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.1.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.1.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.2.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.2.tgz
 ```
 
 `native-smoke.mjs` 只使用合成数据库；传入 `--cli /absolute/path/to/dsh-cli.js` 时还会在临时 profile 中真实安装、组合并卸载 tarball。

@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { MemorySnapshot } from '../src/remote-contract.ts'
 import { MemorySection } from '../src/client/MemorySection.tsx'
-import type { MemoryLocaleKey } from '../src/client/locales.ts'
+import { zh, type MemoryLocaleKey } from '../src/client/locales.ts'
+
+afterEach(cleanup)
 
 function snapshot(overrides: Partial<MemorySnapshot> = {}): MemorySnapshot {
   return {
@@ -33,6 +35,25 @@ function props(view: MemorySnapshot) {
 }
 
 describe('Harness memory settings section', () => {
+  it('shows managed memory as ready when the optional legacy index is absent', async () => {
+    const view = snapshot({
+      database: { status: 'not-configured', source: 'default' },
+      sources: [],
+    })
+    const input = {
+      ...props(view),
+      t: (key: MemoryLocaleKey) => zh[key],
+    }
+
+    render(<MemorySection {...input} />)
+
+    expect(await screen.findByText('内置项目记忆')).not.toBeNull()
+    expect(screen.getByText('已就绪')).not.toBeNull()
+    expect(screen.getByText('可选旧记忆索引')).not.toBeNull()
+    expect(screen.getByText('未连接（可选）')).not.toBeNull()
+    expect(screen.queryByText('记忆索引')).toBeNull()
+  })
+
   it('paints a stable placeholder before loading and requires explicit binding', async () => {
     let resolveSnapshot: ((value: MemorySnapshot) => void) | undefined
     const input = props(snapshot())

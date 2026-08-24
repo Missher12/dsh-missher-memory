@@ -8,7 +8,7 @@ English | [中文](README.zh.md)
 
 ## Platform support
 
-The bundle is pure JavaScript and uses only Node built-ins at runtime. CI builds and verifies one canonical `.tgz`, then installs those exact bytes through the pinned Harness CLI on macOS Intel, macOS Apple Silicon, Windows x64, and Linux x64. The required checks include unit tests, type checks, package safety, real CLI install/uninstall, and the synthetic database lifecycle. The matrix is pinned to DeepSeek Harness Desktop 0.3.5 / Harness 0.1.1-rc.2 for reproducibility.
+The bundle is pure JavaScript and uses only Node built-ins at runtime. CI builds and verifies one canonical `.tgz`, then installs those exact bytes through the pinned Harness CLI on macOS Intel, macOS Apple Silicon, Windows x64, and Linux x64. The required checks include unit tests, type checks, package safety, real CLI install/uninstall, and the synthetic database lifecycle. The matrix is pinned to DeepSeek Harness Desktop 0.3.6 / Harness 0.1.1-rc.2 for reproducibility.
 
 Windows ARM and Linux ARM are not claimed until stable native runners and a shipped Harness target are available. There is no platform-specific database payload or native addon inside the package.
 
@@ -26,13 +26,13 @@ Windows ARM and Linux ARM are not claimed until stable native runners and a ship
 The plugin requires a DeepSeek Harness 0.1.x Host with Node `^22.19.0` or `>=24`. The delivered tarball needs no Python, shell script, or native dependency build:
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.1.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.2.tgz
 dsh --profile web --dump-config
 ```
 
 The bundle patch is active when the configuration contains both `dsh-missher-memory` and `missher-memory`. Restart Harness and finish the first binding in Settings → Super Memory.
 
-If the external database is not at `$HOME/.local/share/missher-memory/tencentdb/vectors.db`, set `MISSHER_TENCENTDB_DIR` to the existing absolute directory that contains `vectors.db` before starting Harness. The plugin never creates a missing directory or empty database and rejects links and escaping paths.
+A fresh Windows or macOS install needs no `vectors.db`: after explicit project binding, built-in project memory uses the plugin-owned `state.db`. A `vectors.db` is only an optional, read-only source for legacy memory. If it is not at `$HOME/.local/share/missher-memory/tencentdb/vectors.db`, you may set `MISSHER_TENCENTDB_DIR` to the existing absolute directory that contains it before starting Harness. The plugin never creates a missing directory or empty database and rejects links and escaping paths.
 
 ## First binding
 
@@ -76,7 +76,7 @@ Uninstall removes the bundle and profile patch but preserves `$DSH_HOME/missher-
 
 ## Status reference
 
-- `not configured`: the target directory or `vectors.db` is absent; the plugin does not create it.
+- `not connected (optional)`: the legacy directory or `vectors.db` is absent; built-in project memory remains available and the plugin does not create an external database.
 - `unsafe path`: the directory, database, or plugin state is a link, a non-regular file, or fails containment checks.
 - `incompatible`: the external tables, FTS5 schema, or plugin state schema is unsupported.
 - `corrupt`: SQLite cannot validate the database read-only.
@@ -85,8 +85,8 @@ Uninstall removes the bundle and profile patch but preserves `$DSH_HOME/missher-
 Before distribution, run:
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.1.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.1.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.2.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.2.tgz
 ```
 
 `native-smoke.mjs` uses synthetic data only. Passing `--cli /absolute/path/to/dsh-cli.js` additionally installs, composes, and removes the tarball in a temporary profile.

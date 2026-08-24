@@ -168,7 +168,7 @@ async function main() {
 function parseArgs(args) {
   const options = {
     platform: 'current',
-    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.1.1.tgz'),
+    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.1.2.tgz'),
     cli: undefined,
     profile: 'memory-smoke',
   }

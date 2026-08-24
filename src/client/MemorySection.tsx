@@ -144,6 +144,11 @@ function Loaded(props: MemorySectionProps): ReactNode {
 
       <div className={css.statusGrid}>
         <article className={css.card}>
+          <span className={css.eyebrow}>{t('managedMemory')}</span>
+          <strong className={css.statusLine}><i data-status="ready" />{t('managedReady')}</strong>
+          <small>{t('managedHint')}</small>
+        </article>
+        <article className={css.card}>
           <span className={css.eyebrow}>{t('database')}</span>
           <strong className={css.statusLine}><i data-status={view.database.status} />{t(databaseKey)}</strong>
           <small>{t('databaseHint')}</small>
