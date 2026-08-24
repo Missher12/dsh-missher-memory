@@ -33,15 +33,15 @@ describe('cross-platform CI contract', () => {
     const workflow = await readWorkflow()
 
     expect(workflow).toContain('repository: Missher12/deepseek-harness-desktop')
-    expect(workflow).toContain('ref: 368f889ee796e1c09cba342ff3855a84ad908f74')
+    expect(workflow).toContain('ref: a52c03b7c59a454dae2ac50a53115e35e72e0980')
     expect(workflow).toContain('node-version: 22.19.0')
     expect(workflow).toContain('pnpm test')
     expect(workflow).toContain('pnpm typecheck')
     expect(workflow).toContain('pnpm build')
     expect(workflow).toContain('scripts/verify-package.mjs')
     expect(workflow).toContain('scripts/native-smoke.mjs --platform ${{ matrix.platform }}')
-    expect(workflow).toContain('--archive ./dist/universal/dsh-missher-memory-0.1.1.tgz')
-    expect(workflow).toContain('--cli ./.harness-035/apps/cli/lib/bin.js')
+    expect(workflow).toContain('--archive ./dist/universal/dsh-missher-memory-0.1.2.tgz')
+    expect(workflow).toContain('--cli ./.harness-036/apps/cli/lib/bin.js')
     expect(workflow).toContain('NODE_OPTIONS: --max-old-space-size=6144')
   })
 

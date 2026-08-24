@@ -38,7 +38,7 @@ jobs:
           pnpm typecheck
           pnpm build
           pnpm pack --pack-destination ./dist
-          node scripts/verify-package.mjs ./dist/dsh-missher-memory-0.1.1.tgz > ./dist/package-verification.json
+          node scripts/verify-package.mjs ./dist/dsh-missher-memory-0.1.2.tgz > ./dist/package-verification.json
 
       - name: Upload canonical universal package
         uses: actions/upload-artifact@v7
@@ -46,7 +46,7 @@ jobs:
           name: dsh-missher-memory-universal
           if-no-files-found: error
           path: |
-            dist/dsh-missher-memory-0.1.1.tgz
+            dist/dsh-missher-memory-0.1.2.tgz
             dist/package-verification.json
 
   native-plugin:
@@ -80,12 +80,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout DeepSeek Harness Desktop 0.3.5
+      - name: Checkout DeepSeek Harness Desktop 0.3.6
         uses: actions/checkout@v6
         with:
           repository: Missher12/deepseek-harness-desktop
-          ref: 368f889ee796e1c09cba342ff3855a84ad908f74
-          path: .harness-035
+          ref: a52c03b7c59a454dae2ac50a53115e35e72e0980
+          path: .harness-036
           persist-credentials: false
 
       - name: Install pnpm 11.7.0
@@ -113,10 +113,10 @@ jobs:
           path: dist/universal
 
       - name: Verify canonical package on native runner
-        run: node scripts/verify-package.mjs ./dist/universal/dsh-missher-memory-0.1.1.tgz > ./dist/package-verification.json
+        run: node scripts/verify-package.mjs ./dist/universal/dsh-missher-memory-0.1.2.tgz > ./dist/package-verification.json
 
       - name: Build exact Harness CLI
-        working-directory: .harness-035
+        working-directory: .harness-036
         env:
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
@@ -124,7 +124,7 @@ jobs:
           pnpm run build:lib
 
       - name: Run native install and lifecycle smoke
-        run: node scripts/native-smoke.mjs --platform ${{ matrix.platform }} --archive ./dist/universal/dsh-missher-memory-0.1.1.tgz --cli ./.harness-035/apps/cli/lib/bin.js > ./dist/native-smoke.json
+        run: node scripts/native-smoke.mjs --platform ${{ matrix.platform }} --archive ./dist/universal/dsh-missher-memory-0.1.2.tgz --cli ./.harness-036/apps/cli/lib/bin.js > ./dist/native-smoke.json
 
       - name: Upload acceptance evidence
         uses: actions/upload-artifact@v7
@@ -132,6 +132,6 @@ jobs:
           name: dsh-missher-memory-${{ matrix.artifact }}
           if-no-files-found: error
           path: |
-            dist/universal/dsh-missher-memory-0.1.1.tgz
+            dist/universal/dsh-missher-memory-0.1.2.tgz
             dist/package-verification.json
             dist/native-smoke.json
