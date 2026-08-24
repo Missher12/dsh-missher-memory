@@ -26,7 +26,7 @@ Windows ARM and Linux ARM are not claimed until stable native runners and a ship
 The plugin requires a DeepSeek Harness 0.1.x Host with Node `^22.19.0` or `>=24`. The delivered tarball needs no Python, shell script, or native dependency build:
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.2.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.3.tgz
 dsh --profile web --dump-config
 ```
 
@@ -85,8 +85,8 @@ Uninstall removes the bundle and profile patch but preserves `$DSH_HOME/missher-
 Before distribution, run:
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.2.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.2.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.3.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.3.tgz
 ```
 
 `native-smoke.mjs` uses synthetic data only. Passing `--cli /absolute/path/to/dsh-cli.js` additionally installs, composes, and removes the tarball in a temporary profile.

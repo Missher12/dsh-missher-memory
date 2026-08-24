@@ -26,7 +26,7 @@ bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建�
 需要 DeepSeek Harness 0.1.x Host（Node `^22.19.0` 或 `>=24`）。使用交付的 tarball，不需要 Python、shell 脚本或原生依赖构建：
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.2.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.3.tgz
 dsh --profile web --dump-config
 ```
 
@@ -85,8 +85,8 @@ dsh --profile web --dump-config
 发布前可运行：
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.2.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.2.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.3.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.3.tgz
 ```
 
 `native-smoke.mjs` 只使用合成数据库；传入 `--cli /absolute/path/to/dsh-cli.js` 时还会在临时 profile 中真实安装、组合并卸载 tarball。

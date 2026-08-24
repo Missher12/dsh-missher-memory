@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { MemorySnapshot } from '../src/remote-contract.ts'
 import { MemorySection } from '../src/client/MemorySection.tsx'
-import { zh, type MemoryLocaleKey } from '../src/client/locales.ts'
+import { en, zh, type MemoryLocaleKey } from '../src/client/locales.ts'
 
 afterEach(cleanup)
 
@@ -35,6 +35,13 @@ function props(view: MemorySnapshot) {
 }
 
 describe('Harness memory settings section', () => {
+  it('keeps implementation details and platform names out of customer-facing copy', () => {
+    const forbidden = /(?:Windows|macOS|Linux|vectors\.db|state\.db)/iu
+
+    expect(Object.values(zh).filter(value => forbidden.test(value))).toEqual([])
+    expect(Object.values(en).filter(value => forbidden.test(value))).toEqual([])
+  })
+
   it('shows managed memory as ready when the optional legacy index is absent', async () => {
     const view = snapshot({
       database: { status: 'not-configured', source: 'default' },
@@ -49,7 +56,7 @@ describe('Harness memory settings section', () => {
 
     expect(await screen.findByText('内置项目记忆')).not.toBeNull()
     expect(screen.getByText('已就绪')).not.toBeNull()
-    expect(screen.getByText('可选旧记忆索引')).not.toBeNull()
+    expect(screen.getByText('旧版记忆（可选）')).not.toBeNull()
     expect(screen.getByText('未连接（可选）')).not.toBeNull()
     expect(screen.queryByText('记忆索引')).toBeNull()
   })
