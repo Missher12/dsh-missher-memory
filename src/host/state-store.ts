@@ -14,7 +14,7 @@ import { deriveProjectIdentity } from './project-identity.ts'
 import { truncateUtf8 } from './budget.ts'
 import { inspectPrivacy } from './privacy.ts'
 
-const STATE_SCHEMA_VERSION = 1
+const STATE_SCHEMA_VERSION = 2
 
 /** Project information used internally by Host services. */
 export interface BoundProject {
@@ -162,6 +162,8 @@ export class StateStore {
     if (canonicalCwd === undefined) return { status: 'unavailable' }
     const key = await loadLocalKey(this.#stateDirectory)
     if (key.status !== 'ready') return { status: key.status === 'unsafe-state' ? 'unsafe-state' : 'corrupt' }
+    const current = this.#ensureCurrentSchema(key.key)
+    if (current !== 'ready') return { status: current }
 
     let database: DatabaseSync | undefined
     try {
@@ -770,7 +772,7 @@ export class StateStore {
     try {
       database = new DatabaseSync(this.#databasePath, { allowExtension: false, timeout: 250 })
       database.exec('PRAGMA foreign_keys = ON')
-      const schema = validateSchema(database)
+      const schema = initializeOrValidateSchema(database, key.key)
       if (schema !== 'ready') {
         database.close()
         return { status: schema }
@@ -794,6 +796,8 @@ export class StateStore {
     if (state.status !== 'present') return { status: state.status }
     const key = await loadLocalKey(this.#stateDirectory)
     if (key.status !== 'ready') return { status: key.status === 'unsafe-state' ? 'unsafe-state' : 'corrupt' }
+    const current = this.#ensureCurrentSchema(key.key)
+    if (current !== 'ready') return { status: current }
     let database: DatabaseSync | undefined
     try {
       database = new DatabaseSync(this.#databasePath, { readOnly: true, allowExtension: false, timeout: 250 })
@@ -812,12 +816,26 @@ export class StateStore {
       return { status: 'unavailable' }
     }
   }
+
+  #ensureCurrentSchema(key: Uint8Array): 'ready' | 'corrupt' | 'incompatible-state' | 'unavailable' {
+    let database: DatabaseSync | undefined
+    try {
+      database = new DatabaseSync(this.#databasePath, { allowExtension: false, timeout: 250 })
+      database.exec('PRAGMA foreign_keys = ON')
+      return initializeOrValidateSchema(database, key)
+    } catch {
+      return 'unavailable'
+    } finally {
+      database?.close()
+    }
+  }
 }
 
 function initializeOrValidateSchema(database: DatabaseSync, key: Uint8Array): 'ready' | 'corrupt' | 'incompatible-state' {
   const version = schemaVersion(database)
   if (version > STATE_SCHEMA_VERSION) return 'incompatible-state'
   if (version === STATE_SCHEMA_VERSION) return validateKey(database, key) ? 'ready' : 'corrupt'
+  if (version === 1) return migrateSchemaOne(database, key)
   const tableCount = database.prepare("SELECT count(*) AS count FROM sqlite_schema WHERE type = 'table'").get() as {
     count: number
   }
@@ -872,8 +890,33 @@ function initializeOrValidateSchema(database: DatabaseSync, key: Uint8Array): 'r
       content TEXT NOT NULL,
       sources_json TEXT NOT NULL,
       pinned INTEGER NOT NULL DEFAULT 0,
+      lifecycle_state TEXT NOT NULL DEFAULT 'active' CHECK (lifecycle_state IN ('active', 'archived')),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
+    );
+    CREATE TABLE memory_capsules (
+      capsule_id TEXT PRIMARY KEY,
+      project_key TEXT NOT NULL REFERENCES projects(project_key) ON DELETE CASCADE,
+      scope TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      topic_key TEXT NOT NULL,
+      content TEXT NOT NULL,
+      source_ids_json TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('active', 'superseded')),
+      policy_version INTEGER NOT NULL,
+      checksum TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE maintenance_runs (
+      run_id TEXT PRIMARY KEY,
+      project_key TEXT NOT NULL REFERENCES projects(project_key) ON DELETE CASCADE,
+      trigger TEXT NOT NULL,
+      result TEXT NOT NULL,
+      input_count INTEGER NOT NULL,
+      output_count INTEGER NOT NULL,
+      started_at TEXT NOT NULL,
+      finished_at TEXT NOT NULL
     );
     CREATE TABLE audit_log (
       event_id TEXT PRIMARY KEY,
@@ -882,10 +925,55 @@ function initializeOrValidateSchema(database: DatabaseSync, key: Uint8Array): 'r
       target_hash TEXT NOT NULL,
       occurred_at TEXT NOT NULL
     );
-    PRAGMA user_version = 1;
+    PRAGMA user_version = 2;
   `)
   database.prepare('INSERT INTO metadata (key, value) VALUES (?, ?)').run('key_check', keyFingerprint(key))
   return 'ready'
+}
+
+function migrateSchemaOne(
+  database: DatabaseSync,
+  key: Uint8Array,
+): 'ready' | 'corrupt' | 'incompatible-state' {
+  if (!validateKey(database, key)) return 'corrupt'
+  try {
+    database.exec(`
+      BEGIN IMMEDIATE;
+      ALTER TABLE approved_memories
+        ADD COLUMN lifecycle_state TEXT NOT NULL DEFAULT 'active'
+        CHECK (lifecycle_state IN ('active', 'archived'));
+      CREATE TABLE memory_capsules (
+        capsule_id TEXT PRIMARY KEY,
+        project_key TEXT NOT NULL REFERENCES projects(project_key) ON DELETE CASCADE,
+        scope TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        topic_key TEXT NOT NULL,
+        content TEXT NOT NULL,
+        source_ids_json TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('active', 'superseded')),
+        policy_version INTEGER NOT NULL,
+        checksum TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE TABLE maintenance_runs (
+        run_id TEXT PRIMARY KEY,
+        project_key TEXT NOT NULL REFERENCES projects(project_key) ON DELETE CASCADE,
+        trigger TEXT NOT NULL,
+        result TEXT NOT NULL,
+        input_count INTEGER NOT NULL,
+        output_count INTEGER NOT NULL,
+        started_at TEXT NOT NULL,
+        finished_at TEXT NOT NULL
+      );
+      PRAGMA user_version = 2;
+      COMMIT;
+    `)
+    return 'ready'
+  } catch {
+    rollback(database)
+    return 'incompatible-state'
+  }
 }
 
 function validateSchema(database: DatabaseSync): 'ready' | 'incompatible-state' {
