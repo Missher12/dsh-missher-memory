@@ -1,15 +1,16 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-tools'
+import { MemoryBrainProvider, type MemoryBrainHubLike } from './host/brain-provider.ts'
 import { MemoryCoordinator } from './host/coordinator.ts'
 import { CandidateService } from './host/candidate-service.ts'
+import { ConsolidationScheduler } from './host/consolidation-scheduler.ts'
+import { ConsolidationService } from './host/consolidation-service.ts'
 import { CaptureBuffer } from './host/capture-buffer.ts'
 import { MemoryLifecycle } from './host/lifecycle.ts'
 import { createMemorySearchTool } from './host/memory-tool.ts'
 import { ReaderWorker } from './host/reader-worker.ts'
-import { RecallService } from './host/recall-service.ts'
 import { MemorySearchService } from './host/search-service.ts'
 import { StateStore } from './host/state-store.ts'
 import { SourceDiscoveryService } from './host/source-discovery.ts'
@@ -19,13 +20,14 @@ import { MissherMemoryRemote } from './remote.ts'
 export const name = 'missher-memory'
 
 /** Harness services required by the Host face. */
-export const inject = ['tools', 'dshHomePath']
+export const inject = ['tools', 'dshHomePath', 'missherBrain']
 
 /** Deployment configuration for search, capture, and recall limits. */
 export interface PluginConfig {
   enabled?: boolean
   captureEnabled?: boolean
   recallEnabled?: boolean
+  consolidationEnabled?: boolean
   searchTimeoutMs?: number
   maxSearchResults?: number
   searchByteBudget?: number
@@ -37,6 +39,7 @@ interface ResolvedPluginConfig {
   enabled: boolean
   captureEnabled: boolean
   recallEnabled: boolean
+  consolidationEnabled: boolean
   searchTimeoutMs: number
   maxSearchResults: number
   searchByteBudget: number
@@ -48,6 +51,7 @@ declare module '@deepseek-ai/cordis' {
   interface Context {
     dshHomePath(...segments: string[]): string
     missherMemoryCore: MemoryCoordinator
+    missherBrain: MemoryBrainHubLike
   }
 }
 
@@ -56,6 +60,7 @@ export const Config: z<PluginConfig> = z.object({
   enabled: z.boolean(),
   captureEnabled: z.boolean(),
   recallEnabled: z.boolean(),
+  consolidationEnabled: z.boolean(),
   searchTimeoutMs: z.number(),
   maxSearchResults: z.number(),
   searchByteBudget: z.number(),
@@ -94,13 +99,22 @@ export function apply(ctx: Context, input: PluginConfig = {}): void {
       database,
       discovery: new SourceDiscoveryService(reader, database, config.searchTimeoutMs),
     })
-    const recall = new RecallService({ state, search, database, timeoutMs: config.searchTimeoutMs })
+    const brainProvider = new MemoryBrainProvider({
+      state,
+      legacy: search,
+      database,
+      timeoutMs: config.searchTimeoutMs,
+    })
+    const consolidation = new ConsolidationService({ store: state })
+    const consolidationScheduler = new ConsolidationScheduler({ state, service: consolidation })
+    if (config.consolidationEnabled) consolidationScheduler.start()
     lifecycle = new MemoryLifecycle({
       store: state,
       candidates: new CandidateService(state),
       buffer: new CaptureBuffer({ maxMessages: 32, maxSessionBytes: 32_000, maxMessageBytes: 2_000 }),
     })
     ctx.provide('missherMemoryCore', coordinator)
+    ctx.effect(() => ctx.missherBrain.register(brainProvider), 'dsh-missher-memory: brain provider')
     new MissherMemoryRemote(ctx, coordinator)
     ctx.tools.register(
       createMemorySearchTool({
@@ -115,6 +129,7 @@ export function apply(ctx: Context, input: PluginConfig = {}): void {
     ctx.on('session/created', (session) => {
       if (session.header.cwd === undefined) return
       if (session.header.origin === 'subagent' || (session.header.delegationDepth ?? 0) > 0) return
+      brainProvider.noteSession(session.id, session.header.cwd)
       void coordinator.noteCwd(session.header.cwd)
     })
     ctx.on('session/event', (session, event) => {
@@ -122,20 +137,12 @@ export function apply(ctx: Context, input: PluginConfig = {}): void {
     })
     ctx.on('session/disposed', (session) => {
       lifecycle?.onDisposed(session)
+      brainProvider.forgetSession(session.id)
     })
-    ctx.on(
-      'agent/pre-step',
-      async ({ agent, messages, signal }, next): Promise<PreStepDecision> => {
-        const decision = await next()
-        if (decision.kind === 'reject' || signal.aborted) return decision
-        const context = await recall.prepare(agent, messages, signal)
-        return context === undefined ? decision : { kind: 'enter', messages: [...decision.messages, context] }
-      },
-      { prepend: true },
-    )
     ctx.effect(
       () => async () => {
         await lifecycle?.close()
+        consolidationScheduler.dispose()
         await reader?.close()
       },
       'dsh-missher-memory: dispose reader',
@@ -152,6 +159,7 @@ function resolveConfig(input: PluginConfig): ResolvedPluginConfig {
     enabled: input.enabled ?? true,
     captureEnabled: input.captureEnabled ?? true,
     recallEnabled: input.recallEnabled ?? true,
+    consolidationEnabled: input.consolidationEnabled ?? true,
     searchTimeoutMs: input.searchTimeoutMs ?? 1_500,
     maxSearchResults: input.maxSearchResults ?? 10,
     searchByteBudget: input.searchByteBudget ?? 6_000,

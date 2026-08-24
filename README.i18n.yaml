@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write plugins/dsh-missher-memory/README.md
-README.md: ed071df2bc219ac087d35aa360e49e6fd8228982
-README.zh.md: 7e542a75e53354e33cdb9cc0db0f2c284ca495bb
+README.md: 391b35ecfe6fada18cfeb546f5a1fa116d5a8daf
+README.zh.md: 78d27c7ca99e18022bf91597587640495137ec69

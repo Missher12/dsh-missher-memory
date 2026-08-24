@@ -10,7 +10,7 @@ describe('standalone bundle manifest', () => {
 
     expect(manifest).toMatchObject({
       name: 'dsh-missher-memory',
-      version: '0.1.3',
+      version: '0.2.0',
       private: false,
       type: 'module',
       repository: {
@@ -89,5 +89,6 @@ describe('standalone bundle manifest', () => {
     expect(patch).toContain('name: dsh-missher-memory')
     expect(patch).toContain('captureEnabled: true')
     expect(patch).toContain('recallEnabled: true')
+    expect(patch).toContain('consolidationEnabled: true')
   })
 })

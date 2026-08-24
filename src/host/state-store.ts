@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto'
+import { createHash, createHmac, randomBytes } from 'node:crypto'
 import { lstat, chmod, realpath } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
@@ -13,6 +13,7 @@ import {
 import { deriveProjectIdentity } from './project-identity.ts'
 import { truncateUtf8 } from './budget.ts'
 import { inspectPrivacy } from './privacy.ts'
+import { memoryFtsQuery, memorySearchTerms } from './fts-index.ts'
 
 const STATE_SCHEMA_VERSION = 2
 
@@ -81,6 +82,26 @@ export interface ApprovedMemory extends CandidateDraft {
   updatedAt: string
 }
 
+export interface ConsolidationAtom extends CandidateDraft {
+  memoryId: string
+  projectKey: string
+  pinned: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MemoryCapsule extends CandidateDraft {
+  capsuleId: string
+  projectShortHash: string
+  topicKey: string
+  sourceMemoryIds: string[]
+  status: 'active' | 'superseded'
+  policyVersion: number
+  checksum: string
+  createdAt: string
+  updatedAt: string
+}
+
 interface CandidateRow {
   candidate_id: string
   project_key: string
@@ -102,6 +123,21 @@ interface ApprovedMemoryRow {
   content: string
   sources_json: string
   pinned: number
+  created_at: string
+  updated_at: string
+}
+
+interface MemoryCapsuleRow {
+  capsule_id: string
+  project_short_hash: string
+  scope: CandidateScope
+  kind: CandidateKind
+  topic_key: string
+  content: string
+  source_ids_json: string
+  status: 'active' | 'superseded'
+  policy_version: number
+  checksum: string
   created_at: string
   updated_at: string
 }
@@ -484,6 +520,8 @@ export class StateStore {
           timestamp,
           timestamp,
         )
+      database.prepare('INSERT INTO approved_memory_fts (memory_id, terms) VALUES (?, ?)')
+        .run(memoryId, memorySearchTerms(content))
       database
         .prepare("UPDATE candidates SET scope = ?, kind = ?, content = ?, status = 'approved', updated_at = ? WHERE candidate_id = ?")
         .run(scope, kind, content, timestamp, candidateId)
@@ -543,6 +581,13 @@ export class StateStore {
         | undefined
       if (row === undefined) return { status: 'unknown-candidate' }
       database.exec('BEGIN IMMEDIATE')
+      database.prepare(`
+        DELETE FROM approved_memory_fts
+        WHERE memory_id IN (
+          SELECT memory_id FROM approved_memories
+          WHERE EXISTS (SELECT 1 FROM json_each(approved_memories.sources_json) WHERE value = ?)
+        )
+      `).run(candidateId)
       database
         .prepare("UPDATE candidates SET status = 'forgotten', updated_at = ? WHERE candidate_id = ?")
         .run(now(), candidateId)
@@ -628,6 +673,7 @@ export class StateStore {
               SELECT m.memory_id, NULL AS project_short_hash, m.scope, m.kind, m.content,
                      m.sources_json, m.pinned, m.created_at, m.updated_at
               FROM approved_memories AS m WHERE m.scope = 'personal' AND m.project_key IS NULL
+                AND m.lifecycle_state = 'active'
               ORDER BY m.pinned DESC, m.updated_at DESC, m.memory_id
             `)
             .all()
@@ -636,7 +682,7 @@ export class StateStore {
               SELECT m.memory_id, p.short_hash AS project_short_hash, m.scope, m.kind, m.content,
                      m.sources_json, m.pinned, m.created_at, m.updated_at
               FROM approved_memories AS m INNER JOIN projects AS p ON p.project_key = m.project_key
-              WHERE m.scope = 'project' AND m.project_key = ?
+              WHERE m.scope = 'project' AND m.project_key = ? AND m.lifecycle_state = 'active'
               ORDER BY m.pinned DESC, m.updated_at DESC, m.memory_id
             `)
             .all(input.projectKey)) as unknown as ApprovedMemoryRow[]
@@ -645,6 +691,297 @@ export class StateStore {
       return []
     } finally {
       database.close()
+    }
+  }
+
+  /** Searches active reviewed atoms through the plugin-owned FTS5 index. */
+  async searchApprovedMemories(input: {
+    projectKey: string
+    scope: CandidateScope
+    query: string
+    limit: number
+  }): Promise<ApprovedMemory[]> {
+    const query = memoryFtsQuery(input.query)
+    if (query === undefined) return []
+    const opened = await this.#openReadOnly()
+    if (opened.status !== 'ready') return []
+    const { database } = opened
+    try {
+      const limit = Math.max(1, Math.min(10, Math.floor(input.limit)))
+      const rows = (input.scope === 'personal'
+        ? database.prepare(`
+            SELECT m.memory_id, NULL AS project_short_hash, m.scope, m.kind, m.content,
+                   m.sources_json, m.pinned, m.created_at, m.updated_at
+            FROM approved_memory_fts AS f
+            INNER JOIN approved_memories AS m ON m.memory_id = f.memory_id
+            WHERE approved_memory_fts MATCH ? AND m.scope = 'personal'
+              AND m.project_key IS NULL AND m.lifecycle_state = 'active'
+            ORDER BY m.pinned DESC, bm25(approved_memory_fts), m.updated_at DESC, m.memory_id
+            LIMIT ?
+          `).all(query, limit)
+        : database.prepare(`
+            SELECT m.memory_id, p.short_hash AS project_short_hash, m.scope, m.kind, m.content,
+                   m.sources_json, m.pinned, m.created_at, m.updated_at
+            FROM approved_memory_fts AS f
+            INNER JOIN approved_memories AS m ON m.memory_id = f.memory_id
+            INNER JOIN projects AS p ON p.project_key = m.project_key
+            WHERE approved_memory_fts MATCH ? AND m.scope = 'project'
+              AND m.project_key = ? AND m.lifecycle_state = 'active'
+            ORDER BY m.pinned DESC, bm25(approved_memory_fts), m.updated_at DESC, m.memory_id
+            LIMIT ?
+          `).all(query, input.projectKey, limit)) as unknown as ApprovedMemoryRow[]
+      return rows.map(approvedFromRow)
+    } catch {
+      return []
+    } finally {
+      database.close()
+    }
+  }
+
+  /** Counts active reviewed atoms without exposing their contents. */
+  async countApprovedMemories(): Promise<number> {
+    const opened = await this.#openReadOnly()
+    if (opened.status !== 'ready') return 0
+    try {
+      const row = opened.database.prepare(`
+        SELECT
+          (SELECT count(*) FROM approved_memories WHERE lifecycle_state = 'active')
+          + (SELECT count(*) FROM memory_capsules WHERE status = 'active') AS count
+      `).get() as { count: number }
+      return row.count
+    } catch {
+      return 0
+    } finally {
+      opened.database.close()
+    }
+  }
+
+  /** Returns only active project atoms required by the deterministic consolidator. */
+  async listConsolidationAtoms(projectKey: string): Promise<ConsolidationAtom[]> {
+    const opened = await this.#openReadOnly()
+    if (opened.status !== 'ready') return []
+    try {
+      return opened.database.prepare(`
+        SELECT memory_id AS memoryId, project_key AS projectKey, scope, kind, content,
+               pinned, created_at AS createdAt, updated_at AS updatedAt
+        FROM approved_memories
+        WHERE project_key = ? AND scope = 'project' AND lifecycle_state = 'active'
+        ORDER BY created_at, memory_id
+      `).all(projectKey).map(row => ({
+        ...(row as Omit<ConsolidationAtom, 'pinned'> & { pinned: number }),
+        pinned: (row as { pinned: number }).pinned === 1,
+      }))
+    } catch {
+      return []
+    } finally {
+      opened.database.close()
+    }
+  }
+
+  /** Archives exact reviewed sources and creates one reversible capsule transactionally. */
+  async commitCapsule(input: {
+    projectKey: string
+    scope: CandidateScope
+    kind: CandidateKind
+    topicKey: string
+    content: string
+    sourceMemoryIds: readonly string[]
+    policyVersion: number
+  }): Promise<{ status: 'consolidated'; capsuleId: string } | { status: 'invalid' | 'unavailable' }> {
+    const sourceIds = [...new Set(input.sourceMemoryIds)].sort()
+    if (
+      input.scope !== 'project'
+      || sourceIds.length < 4
+      || sourceIds.length > 24
+      || input.content.length === 0
+      || !inspectPrivacy(input.content).safe
+    ) return { status: 'invalid' }
+    const opened = await this.#openExistingForMutation()
+    if (opened.status !== 'ready') return { status: 'unavailable' }
+    const { database, key } = opened
+    try {
+      const placeholders = sourceIds.map(() => '?').join(', ')
+      const rows = database.prepare(`
+        SELECT memory_id, project_key, scope, kind, content, pinned, lifecycle_state
+        FROM approved_memories WHERE memory_id IN (${placeholders})
+      `).all(...sourceIds) as unknown as Array<{
+        memory_id: string
+        project_key: string | null
+        scope: CandidateScope
+        kind: CandidateKind
+        content: string
+        pinned: number
+        lifecycle_state: string
+      }>
+      const normalized = normalizeCapsuleContent(input.content)
+      if (
+        rows.length !== sourceIds.length
+        || rows.some(row =>
+          row.project_key !== input.projectKey
+          || row.scope !== input.scope
+          || row.kind !== input.kind
+          || row.pinned !== 0
+          || row.lifecycle_state !== 'active'
+          || normalizeCapsuleContent(row.content) !== normalized)
+      ) return { status: 'invalid' }
+      const capsuleId = opaqueId(key, 'capsule', `${input.projectKey}\0${sourceIds.join('\0')}\0${normalized}`)
+      const timestamp = now()
+      const checksum = createHash('sha256').update(input.content).update('\0').update(sourceIds.join('\0')).digest('hex')
+      database.exec('BEGIN IMMEDIATE')
+      database.prepare(`
+        INSERT INTO memory_capsules
+          (capsule_id, project_key, scope, kind, topic_key, content, source_ids_json,
+           status, policy_version, checksum, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+      `).run(
+        capsuleId,
+        input.projectKey,
+        input.scope,
+        input.kind,
+        input.topicKey,
+        input.content,
+        JSON.stringify(sourceIds),
+        input.policyVersion,
+        checksum,
+        timestamp,
+        timestamp,
+      )
+      database.prepare(`UPDATE approved_memories SET lifecycle_state = 'archived', updated_at = ?
+        WHERE memory_id IN (${placeholders})`).run(timestamp, ...sourceIds)
+      database.prepare(`DELETE FROM approved_memory_fts WHERE memory_id IN (${placeholders})`).run(...sourceIds)
+      database.prepare('INSERT INTO memory_capsule_fts (capsule_id, terms) VALUES (?, ?)')
+        .run(capsuleId, memorySearchTerms(input.content))
+      writeAudit(database, key, input.projectKey, 'capsule-created', capsuleId)
+      database.exec('COMMIT')
+      return { status: 'consolidated', capsuleId }
+    } catch {
+      rollback(database)
+      return { status: 'unavailable' }
+    } finally {
+      database.close()
+    }
+  }
+
+  /** Lists project capsules for settings, export, and Brain preparation. */
+  async listMemoryCapsules(input: { projectKey: string; scope: CandidateScope }): Promise<MemoryCapsule[]> {
+    const opened = await this.#openReadOnly()
+    if (opened.status !== 'ready') return []
+    try {
+      const rows = opened.database.prepare(`
+        SELECT c.capsule_id, p.short_hash AS project_short_hash, c.scope, c.kind, c.topic_key,
+               c.content, c.source_ids_json, c.status, c.policy_version, c.checksum,
+               c.created_at, c.updated_at
+        FROM memory_capsules AS c INNER JOIN projects AS p ON p.project_key = c.project_key
+        WHERE c.project_key = ? AND c.scope = ?
+        ORDER BY c.updated_at DESC, c.capsule_id
+      `).all(input.projectKey, input.scope) as unknown as MemoryCapsuleRow[]
+      return rows.map(capsuleFromRow)
+    } catch {
+      return []
+    } finally {
+      opened.database.close()
+    }
+  }
+
+  /** Searches active capsules through their independent FTS5 index. */
+  async searchMemoryCapsules(input: {
+    projectKey: string
+    query: string
+    limit: number
+  }): Promise<MemoryCapsule[]> {
+    const query = memoryFtsQuery(input.query)
+    if (query === undefined) return []
+    const opened = await this.#openReadOnly()
+    if (opened.status !== 'ready') return []
+    try {
+      const rows = opened.database.prepare(`
+        SELECT c.capsule_id, p.short_hash AS project_short_hash, c.scope, c.kind, c.topic_key,
+               c.content, c.source_ids_json, c.status, c.policy_version, c.checksum,
+               c.created_at, c.updated_at
+        FROM memory_capsule_fts AS f
+        INNER JOIN memory_capsules AS c ON c.capsule_id = f.capsule_id
+        INNER JOIN projects AS p ON p.project_key = c.project_key
+        WHERE memory_capsule_fts MATCH ? AND c.project_key = ? AND c.status = 'active'
+        ORDER BY bm25(memory_capsule_fts), c.updated_at DESC, c.capsule_id
+        LIMIT ?
+      `).all(query, input.projectKey, Math.max(1, Math.min(10, Math.floor(input.limit)))) as unknown as MemoryCapsuleRow[]
+      return rows.map(capsuleFromRow)
+    } catch {
+      return []
+    } finally {
+      opened.database.close()
+    }
+  }
+
+  /** Supersedes one capsule and restores every archived source atom and index row. */
+  async rollbackCapsule(capsuleId: string): Promise<{ status: 'rolled-back' | 'unknown-capsule' | 'unavailable' }> {
+    const opened = await this.#openExistingForMutation()
+    if (opened.status !== 'ready') return { status: 'unavailable' }
+    const { database, key } = opened
+    try {
+      const capsule = database.prepare(`
+        SELECT project_key, source_ids_json, status FROM memory_capsules WHERE capsule_id = ?
+      `).get(capsuleId) as { project_key: string; source_ids_json: string; status: string } | undefined
+      if (capsule === undefined || capsule.status !== 'active') return { status: 'unknown-capsule' }
+      const sourceIds = parseStringArray(capsule.source_ids_json)
+      if (sourceIds.length < 4) return { status: 'unavailable' }
+      const placeholders = sourceIds.map(() => '?').join(', ')
+      const sources = database.prepare(`
+        SELECT memory_id, content FROM approved_memories WHERE memory_id IN (${placeholders})
+      `).all(...sourceIds) as unknown as Array<{ memory_id: string; content: string }>
+      if (sources.length !== sourceIds.length) return { status: 'unavailable' }
+      const timestamp = now()
+      database.exec('BEGIN IMMEDIATE')
+      database.prepare(`UPDATE approved_memories SET lifecycle_state = 'active', updated_at = ?
+        WHERE memory_id IN (${placeholders})`).run(timestamp, ...sourceIds)
+      const insert = database.prepare('INSERT INTO approved_memory_fts (memory_id, terms) VALUES (?, ?)')
+      for (const source of sources) insert.run(source.memory_id, memorySearchTerms(source.content))
+      database.prepare(`UPDATE memory_capsules SET status = 'superseded', updated_at = ? WHERE capsule_id = ?`)
+        .run(timestamp, capsuleId)
+      database.prepare('DELETE FROM memory_capsule_fts WHERE capsule_id = ?').run(capsuleId)
+      writeAudit(database, key, capsule.project_key, 'capsule-rolled-back', capsuleId)
+      database.exec('COMMIT')
+      return { status: 'rolled-back' }
+    } catch {
+      rollback(database)
+      return { status: 'unavailable' }
+    } finally {
+      database.close()
+    }
+  }
+
+  /** Records only bounded maintenance counters and result categories. */
+  async recordMaintenanceRun(input: {
+    projectKey: string
+    trigger: 'automatic' | 'manual'
+    result: 'no-op' | 'consolidated'
+    inputCount: number
+    outputCount: number
+    startedAt: string
+    finishedAt: string
+  }): Promise<void> {
+    const opened = await this.#openExistingForMutation()
+    if (opened.status !== 'ready') return
+    try {
+      const runId = `run_${randomBytes(12).toString('hex')}`
+      opened.database.prepare(`
+        INSERT INTO maintenance_runs
+          (run_id, project_key, trigger, result, input_count, output_count, started_at, finished_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        runId,
+        input.projectKey,
+        input.trigger,
+        input.result,
+        input.inputCount,
+        input.outputCount,
+        input.startedAt,
+        input.finishedAt,
+      )
+    } catch {
+      // Maintenance history cannot block or roll back a completed consolidation.
+    } finally {
+      opened.database.close()
     }
   }
 
@@ -697,6 +1034,14 @@ export class StateStore {
     const { database } = opened
     try {
       database.exec('BEGIN IMMEDIATE')
+      database.prepare(`
+        DELETE FROM approved_memory_fts
+        WHERE memory_id IN (SELECT memory_id FROM approved_memories WHERE project_key = ?)
+      `).run(projectKey)
+      database.prepare(`
+        DELETE FROM memory_capsule_fts
+        WHERE capsule_id IN (SELECT capsule_id FROM memory_capsules WHERE project_key = ?)
+      `).run(projectKey)
       database.prepare(`
         DELETE FROM approved_memories
         WHERE EXISTS (
@@ -834,7 +1179,11 @@ export class StateStore {
 function initializeOrValidateSchema(database: DatabaseSync, key: Uint8Array): 'ready' | 'corrupt' | 'incompatible-state' {
   const version = schemaVersion(database)
   if (version > STATE_SCHEMA_VERSION) return 'incompatible-state'
-  if (version === STATE_SCHEMA_VERSION) return validateKey(database, key) ? 'ready' : 'corrupt'
+  if (version === STATE_SCHEMA_VERSION) {
+    if (!validateKey(database, key)) return 'corrupt'
+    ensureFtsSchema(database)
+    return 'ready'
+  }
   if (version === 1) return migrateSchemaOne(database, key)
   const tableCount = database.prepare("SELECT count(*) AS count FROM sqlite_schema WHERE type = 'table'").get() as {
     count: number
@@ -928,6 +1277,7 @@ function initializeOrValidateSchema(database: DatabaseSync, key: Uint8Array): 'r
     PRAGMA user_version = 2;
   `)
   database.prepare('INSERT INTO metadata (key, value) VALUES (?, ?)').run('key_check', keyFingerprint(key))
+  ensureFtsSchema(database)
   return 'ready'
 }
 
@@ -966,14 +1316,50 @@ function migrateSchemaOne(
         started_at TEXT NOT NULL,
         finished_at TEXT NOT NULL
       );
-      PRAGMA user_version = 2;
-      COMMIT;
     `)
+    ensureFtsSchema(database)
+    database.exec('PRAGMA user_version = 2; COMMIT;')
     return 'ready'
   } catch {
     rollback(database)
     return 'incompatible-state'
   }
+}
+
+function ensureFtsSchema(database: DatabaseSync): void {
+  const approvedExisting = database.prepare(`
+    SELECT 1 AS found FROM sqlite_schema WHERE name = 'approved_memory_fts'
+  `).get()
+  if (approvedExisting === undefined) {
+    database.exec(`
+      CREATE VIRTUAL TABLE approved_memory_fts USING fts5(
+        memory_id UNINDEXED,
+        terms,
+        tokenize = 'unicode61 remove_diacritics 2'
+      );
+    `)
+    const rows = database.prepare(`
+      SELECT memory_id, content FROM approved_memories WHERE lifecycle_state = 'active'
+    `).all() as unknown as Array<{ memory_id: string; content: string }>
+    const insert = database.prepare('INSERT INTO approved_memory_fts (memory_id, terms) VALUES (?, ?)')
+    for (const row of rows) insert.run(row.memory_id, memorySearchTerms(row.content))
+  }
+  const capsuleExisting = database.prepare(`
+    SELECT 1 AS found FROM sqlite_schema WHERE name = 'memory_capsule_fts'
+  `).get()
+  if (capsuleExisting !== undefined) return
+  database.exec(`
+    CREATE VIRTUAL TABLE memory_capsule_fts USING fts5(
+      capsule_id UNINDEXED,
+      terms,
+      tokenize = 'unicode61 remove_diacritics 2'
+    );
+  `)
+  const capsules = database.prepare(`
+    SELECT capsule_id, content FROM memory_capsules WHERE status = 'active'
+  `).all() as unknown as Array<{ capsule_id: string; content: string }>
+  const insertCapsule = database.prepare('INSERT INTO memory_capsule_fts (capsule_id, terms) VALUES (?, ?)')
+  for (const capsule of capsules) insertCapsule.run(capsule.capsule_id, memorySearchTerms(capsule.content))
 }
 
 function validateSchema(database: DatabaseSync): 'ready' | 'incompatible-state' {
@@ -1072,6 +1458,36 @@ function approvedFromRow(row: ApprovedMemoryRow): ApprovedMemory {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
+}
+
+function capsuleFromRow(row: MemoryCapsuleRow): MemoryCapsule {
+  return {
+    capsuleId: row.capsule_id,
+    projectShortHash: row.project_short_hash,
+    scope: row.scope,
+    kind: row.kind,
+    topicKey: row.topic_key,
+    content: row.content,
+    sourceMemoryIds: parseStringArray(row.source_ids_json),
+    status: row.status,
+    policyVersion: row.policy_version,
+    checksum: row.checksum,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function parseStringArray(value: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return Array.isArray(parsed) && parsed.every(item => typeof item === 'string') ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function normalizeCapsuleContent(value: string): string {
+  return value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLocaleLowerCase()
 }
 
 function isMissing(error: unknown): boolean {

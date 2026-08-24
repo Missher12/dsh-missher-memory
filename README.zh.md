@@ -4,7 +4,7 @@
 
 [![跨平台 Harness 验证](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml/badge.svg)](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml)
 
-`dsh-missher-memory` 是可独立安装的 DeepSeek Harness bundle，用于恢复超级长项目的架构、决定、进度、失败经验和下一步。它不修改 Harness 核心，也不复制或改写现有 `vectors.db`。
+`dsh-missher-memory` 是可独立安装的 DeepSeek Harness bundle，用于恢复超级长项目的架构、决定、进度、失败经验和下一步。0.2.0 新增索引召回和可逆重复记忆整理；它不修改 Harness 核心，也不复制或改写现有旧记忆数据库。
 
 ## 平台支持
 
@@ -18,7 +18,8 @@ bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建�
 - cwd 只用于生成一次绑定候选。持久状态只保存不可逆项目键、basename、短 hash 和加密后的外部 session 标识，不保存绝对 cwd。
 - 项目记忆与个人偏好分层。项目搜索不会读取其他项目；个人搜索不会读取外部项目数据库。
 - 新绑定项目默认开启候选记忆捕获。用户明确绑定项目后，session 结束时只会生成待审核候选，绝不会自动成为已审核记忆。
-- 新绑定项目默认开启自动召回。它只在顶层用户轮次注入已审核内容，最多 5 条、6000 字节，并附来源、时间和“不可信历史内容”提示。
+- 新绑定项目默认开启自动召回。它把已审核原子、可逆胶囊和可选旧记忆贡献给 Desktop Brain Hub；只有 Brain Hub 会追加一条可见、带来源的召回消息。
+- 至少存放七天、未固定且正文完全重复的已审核原子会自动整理；来源只归档不删除，回滚胶囊会逐条恢复来源和 FTS 索引。
 - 数据库缺失、损坏、路径不安全或查询超时时，插件返回稳定状态并失败开放，不阻止 Harness 启动和会话。
 
 ## 安装
@@ -26,11 +27,11 @@ bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建�
 需要 DeepSeek Harness 0.1.x Host（Node `^22.19.0` 或 `>=24`）。使用交付的 tarball，不需要 Python、shell 脚本或原生依赖构建：
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.3.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.2.0.tgz
 dsh --profile web --dump-config
 ```
 
-配置中同时出现 `dsh-missher-memory` 和 `missher-memory` 即表示 bundle patch 已进入 profile。重启 Harness 后，在“设置 → 超级记忆”完成首次绑定。
+配置中同时出现 `dsh-missher-memory` 和 `missher-memory` 即表示 bundle patch 已进入 profile。0.2.0 要求 DeepSeek Harness Desktop 0.3.8 提供 `missherBrain` Host 服务。重启 Harness 后，在“设置 → 超级记忆”完成首次绑定。
 
 全新 Windows/macOS 安装不需要 `vectors.db`：内置项目记忆在用户确认绑定后使用插件自有的 `state.db`。`vectors.db` 只是兼容旧记忆的可选只读来源。如果它不在默认的 `$HOME/.local/share/missher-memory/tencentdb/vectors.db`，启动 Harness 前可把 `MISSHER_TENCENTDB_DIR` 设为包含 `vectors.db` 的现有绝对目录。插件不会创建缺失目录或空数据库，也拒绝符号链接和逃逸路径。
 
@@ -59,7 +60,7 @@ memory_search({ query: "packaged smoke", scope: "project", limit: 5 })
 
 设置页可编辑、合并、批准、固定或遗忘候选。只有批准后的记忆可被搜索或召回；固定只影响排序。项目删除会删除该项目的绑定、设置、候选、项目记忆，以及从该项目候选派生的个人记忆，不触碰外部数据库。
 
-自动召回只使用已审核内容和显式绑定的外部来源。它有独立开关、条数和字节预算；插件错误、超时或状态异常时不注入任何内容。
+自动召回只使用已审核内容和显式绑定的外部来源。它有独立开关、条数和字节预算；插件错误、超时或状态异常时不贡献任何内容。安装包内置旧记忆只读 Reader 代码，但不包含旧数据库、用户状态、凭据或路径。
 
 ## 数据与卸载
 
@@ -85,8 +86,8 @@ dsh --profile web --dump-config
 发布前可运行：
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.3.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.3.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.2.0.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.2.0.tgz
 ```
 
 `native-smoke.mjs` 只使用合成数据库；传入 `--cli /absolute/path/to/dsh-cli.js` 时还会在临时 profile 中真实安装、组合并卸载 tarball。

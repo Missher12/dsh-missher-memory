@@ -52,6 +52,9 @@
 - 0.1.3 将设置页的平台与数据库实现说明改为面向用户的产品文案，并以自动化测试阻止平台名和内部数据库文件名再次进入界面。
 - 0.2.0 状态 schema 2 已加入原子 v1 迁移、原子生命周期、可逆胶囊和维护记录表；既有正文、绑定密文和项目身份在迁移中逐字节保持。
 - 为降低迁移风险，低频审核/设置事务继续使用已验证的同步存储 API；高频 FTS、旧来源检索和固化计算保留在可终止 Worker 中。
+- 0.2.0 已审核记忆改用插件自有 FTS5，中英混合 50,000 条回归满足 Intel p95 150ms 门槛；旧 TencentDB Reader 代码随包交付，但数据库永不打包或写入。
+- 自动整理默认开启，只处理至少七天、未固定、同项目同类型的完全重复已审核原子；胶囊保留来源 ID 和校验和，回滚会恢复全部来源及索引。
+- Memory 不再注册独立 pre-step 注入器；它通过 Desktop `missherBrain` 服务贡献 reviewed-memory、memory-capsule 和 legacy-memory，由 Brain 统一仲裁、去重和显示。
 - 独立公开仓库只生成一个 canonical 通用 `.tgz`；必需 CI 矩阵在 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 上下载相同字节，并针对固定的 Desktop 0.3.6 / Harness 0.1.1-rc.2 CLI 执行测试、包安全验证和真实安装/卸载 smoke。
 
 ## 已知问题与风险

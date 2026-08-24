@@ -5,6 +5,7 @@
         enabled: true
         captureEnabled: true
         recallEnabled: true
+        consolidationEnabled: true
         searchTimeoutMs: 1500
         maxSearchResults: 10
         searchByteBudget: 6000
