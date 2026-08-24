@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 [![Cross-platform Harness verification](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml/badge.svg)](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml)
 
-`dsh-missher-memory` is an independently installable DeepSeek Harness bundle for recovering architecture, decisions, progress, failed approaches, and next steps in long-running projects. It neither changes Harness core nor copies or modifies the existing `vectors.db`.
+`dsh-missher-memory` is an independently installable DeepSeek Harness bundle for recovering architecture, decisions, progress, failed approaches, and next steps in long-running projects. Version 0.2.0 adds indexed recall and reversible duplicate consolidation. It neither changes Harness core nor copies or modifies an existing legacy database.
 
 ## Platform support
 
@@ -18,7 +18,8 @@ Windows ARM and Linux ARM are not claimed until stable native runners and a ship
 - cwd creates an in-memory binding candidate only. Durable state keeps an irreversible project key, basename, short hash, and encrypted external session identifiers; it never stores an absolute cwd.
 - Project memory and personal preferences use separate scopes. Project search cannot read another project, and personal search does not read the external project database.
 - Candidate capture defaults on for newly bound projects. Session disposal creates review candidates only after the user explicitly binds the project; candidates never become approved memory automatically.
-- Automatic recall defaults on for newly bound projects. It injects reviewed memory only for top-level user turns, with at most 5 results and 6000 bytes plus source, time, and an untrusted-history warning.
+- Automatic recall defaults on for newly bound projects. It contributes reviewed atoms, reversible capsules, and optional legacy rows to the Desktop Brain Hub; the Hub is the only component that appends one visible, source-attributed recall message.
+- Old, unpinned, exact duplicate reviewed atoms are consolidated automatically after seven days. Sources are archived rather than deleted, and rolling back a capsule restores every source and FTS row exactly.
 - Missing, damaged, unsafe, or timed-out databases return stable states and fail open without blocking Harness startup or a session.
 
 ## Install
@@ -26,11 +27,11 @@ Windows ARM and Linux ARM are not claimed until stable native runners and a ship
 The plugin requires a DeepSeek Harness 0.1.x Host with Node `^22.19.0` or `>=24`. The delivered tarball needs no Python, shell script, or native dependency build:
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.1.3.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.2.0.tgz
 dsh --profile web --dump-config
 ```
 
-The bundle patch is active when the configuration contains both `dsh-missher-memory` and `missher-memory`. Restart Harness and finish the first binding in Settings → Super Memory.
+The bundle patch is active when the configuration contains both `dsh-missher-memory` and `missher-memory`. Version 0.2.0 requires the `missherBrain` Host service shipped by DeepSeek Harness Desktop 0.3.8. Restart Harness and finish the first binding in Settings → Super Memory.
 
 A fresh Windows or macOS install needs no `vectors.db`: after explicit project binding, built-in project memory uses the plugin-owned `state.db`. A `vectors.db` is only an optional, read-only source for legacy memory. If it is not at `$HOME/.local/share/missher-memory/tencentdb/vectors.db`, you may set `MISSHER_TENCENTDB_DIR` to the existing absolute directory that contains it before starting Harness. The plugin never creates a missing directory or empty database and rejects links and escaping paths.
 
@@ -59,7 +60,7 @@ After capture is enabled, the plugin buffers only direct user and assistant text
 
 Settings lets the user edit, merge, approve, pin, or forget candidates. Only approved memories can be searched or recalled; pinning changes order only. Project deletion removes that project's bindings, settings, candidates, project memory, and personal memory derived from its candidates without touching the external database.
 
-Automatic recall uses only reviewed content and explicitly bound external sources. It has an independent switch, result limit, and byte budget. Errors, timeout, or invalid state inject nothing.
+Automatic recall uses only reviewed content and explicitly bound external sources. It has an independent switch, result limit, and byte budget. Errors, timeout, or invalid state contribute nothing. The optional legacy reader code is bundled, but no legacy database, user state, credential, or path is included in the package.
 
 ## Data and uninstall
 
@@ -85,8 +86,8 @@ Uninstall removes the bundle and profile patch but preserves `$DSH_HOME/missher-
 Before distribution, run:
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.1.3.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.1.3.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.2.0.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.2.0.tgz
 ```
 
 `native-smoke.mjs` uses synthetic data only. Passing `--cli /absolute/path/to/dsh-cli.js` additionally installs, composes, and removes the tarball in a temporary profile.

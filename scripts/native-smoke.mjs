@@ -79,6 +79,19 @@ async function main() {
     mounted.ctx.emit('session/disposed', session)
     const captured = await waitForCandidate(mounted.remote)
     await mounted.remote.reviewCandidate({ action: 'approve', candidateId: captured.candidateId })
+    const recallSession = { id: 'synthetic-recall-session', header: { cwd: synthetic.projectA } }
+    mounted.ctx.emit('session/created', recallSession)
+    const prepared = await mounted.brainProvider.prepare({
+      projectKey: 'a'.repeat(64),
+      sessionId: recallSession.id,
+      turn: 1,
+      query: '独立安装包验收',
+      signal: new AbortController().signal,
+    })
+    const brainRecall = prepared.items.some(item => item.kind === 'reviewed-memory')
+    await prepared.cancel()
+    mounted.ctx.emit('session/disposed', recallSession)
+    if (!brainRecall) throw new Error('brain_recall_missing')
 
     const lock = new DatabaseSync(synthetic.databasePath, { timeout: 250 })
     lock.exec('BEGIN EXCLUSIVE')
@@ -141,6 +154,7 @@ async function main() {
       search: true,
       crossProjectIsolation: true,
       reviewedCapture: true,
+      brainRecall: true,
       timeout: true,
       missingDatabase: true,
       corruptDatabase: true,
@@ -168,7 +182,7 @@ async function main() {
 function parseArgs(args) {
   const options = {
     platform: 'current',
-    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.1.3.tgz'),
+    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.2.0.tgz'),
     cli: undefined,
     profile: 'memory-smoke',
   }
@@ -262,6 +276,7 @@ async function loadRuntime(pluginEntry) {
 async function mount(runtime, dshHome, databaseRoot) {
   const tools = new Map()
   const ctx = new runtime.Context()
+  let brainProvider
   ctx.provide('tools', {
     register(tool) {
       tools.set(tool.name, tool)
@@ -269,6 +284,12 @@ async function mount(runtime, dshHome, databaseRoot) {
     },
   })
   ctx.provide('dshHomePath', (...segments) => join(dshHome, ...segments))
+  ctx.provide('missherBrain', {
+    register(provider) {
+      brainProvider = provider
+      return () => { brainProvider = undefined }
+    },
+  })
   const previousRoot = process.env.MISSHER_TENCENTDB_DIR
   process.env.MISSHER_TENCENTDB_DIR = databaseRoot
   let fiber
@@ -280,6 +301,7 @@ async function mount(runtime, dshHome, databaseRoot) {
       searchByteBudget: 3_000,
       recallLimit: 2,
       recallByteBudget: 1_500,
+      consolidationEnabled: true,
     })
     await fiber.await()
   } finally {
@@ -288,10 +310,12 @@ async function mount(runtime, dshHome, databaseRoot) {
   }
   const tool = tools.get('memory_search')
   if (tool === undefined) throw new Error('memory_tool_missing')
+  if (brainProvider === undefined) throw new Error('memory_brain_provider_missing')
   return {
     ctx,
     fiber,
     tool,
+    brainProvider,
     core: ctx.missherMemoryCore,
     remote: ctx.missherMemory,
     async dispose() {

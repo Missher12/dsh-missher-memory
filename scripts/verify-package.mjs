@@ -188,7 +188,7 @@ function assertManifest(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('package_json_invalid')
   if (
     value.name !== 'dsh-missher-memory'
-    || value.version !== '0.1.3'
+    || value.version !== '0.2.0'
     || value.type !== 'module'
     || value.main !== 'lib/index.js'
     || value.types !== 'lib/index.d.ts'

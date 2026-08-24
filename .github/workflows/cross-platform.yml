@@ -38,7 +38,7 @@ jobs:
           pnpm typecheck
           pnpm build
           pnpm pack --pack-destination ./dist
-          node scripts/verify-package.mjs ./dist/dsh-missher-memory-0.1.3.tgz > ./dist/package-verification.json
+          node scripts/verify-package.mjs ./dist/dsh-missher-memory-0.2.0.tgz > ./dist/package-verification.json
 
       - name: Upload canonical universal package
         uses: actions/upload-artifact@v7
@@ -46,7 +46,7 @@ jobs:
           name: dsh-missher-memory-universal
           if-no-files-found: error
           path: |
-            dist/dsh-missher-memory-0.1.3.tgz
+            dist/dsh-missher-memory-0.2.0.tgz
             dist/package-verification.json
 
   native-plugin:
@@ -113,7 +113,7 @@ jobs:
           path: dist/universal
 
       - name: Verify canonical package on native runner
-        run: node scripts/verify-package.mjs ./dist/universal/dsh-missher-memory-0.1.3.tgz > ./dist/package-verification.json
+        run: node scripts/verify-package.mjs ./dist/universal/dsh-missher-memory-0.2.0.tgz > ./dist/package-verification.json
 
       - name: Build exact Harness CLI
         working-directory: .harness-036
@@ -124,7 +124,7 @@ jobs:
           pnpm run build:lib
 
       - name: Run native install and lifecycle smoke
-        run: node scripts/native-smoke.mjs --platform ${{ matrix.platform }} --archive ./dist/universal/dsh-missher-memory-0.1.3.tgz --cli ./.harness-036/apps/cli/lib/bin.js > ./dist/native-smoke.json
+        run: node scripts/native-smoke.mjs --platform ${{ matrix.platform }} --archive ./dist/universal/dsh-missher-memory-0.2.0.tgz --cli ./.harness-036/apps/cli/lib/bin.js > ./dist/native-smoke.json
 
       - name: Upload acceptance evidence
         uses: actions/upload-artifact@v7
@@ -132,6 +132,6 @@ jobs:
           name: dsh-missher-memory-${{ matrix.artifact }}
           if-no-files-found: error
           path: |
-            dist/universal/dsh-missher-memory-0.1.3.tgz
+            dist/universal/dsh-missher-memory-0.2.0.tgz
             dist/package-verification.json
             dist/native-smoke.json

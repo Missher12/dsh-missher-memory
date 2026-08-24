@@ -81,7 +81,8 @@ export interface MemoryToolValue {
 
 /** Dependencies and deployment tunables for `memory_search`. */
 export interface MemorySearchToolOptions {
-  state: Pick<StateStore, 'lookupProject'> & Partial<Pick<StateStore, 'listApprovedMemories'>>
+  state: Pick<StateStore, 'lookupProject'>
+    & Partial<Pick<StateStore, 'listApprovedMemories' | 'searchApprovedMemories'>>
   search: Pick<MemorySearchService, 'search'>
   database: MemoryDatabasePathOptions
   searchTimeoutMs: number
@@ -119,9 +120,18 @@ export function createMemorySearchTool(options: MemorySearchToolOptions) {
       }
       const project = { basename: lookup.project.basename, shortHash: lookup.project.shortHash }
       const limit = Math.min(options.maxSearchResults ?? 10, args.limit ?? 5)
-      const approved = options.state.listApprovedMemories === undefined
-        ? []
-        : await options.state.listApprovedMemories({ projectKey: lookup.project.projectKey, scope })
+      const validation = searchApprovedMemories([], args.query, scope)
+      if (!validation.ok) return emptyValue('invalid-query', scope, project)
+      const approved = options.state.searchApprovedMemories !== undefined
+        ? await options.state.searchApprovedMemories({
+            projectKey: lookup.project.projectKey,
+            scope,
+            query: args.query,
+            limit,
+          })
+        : options.state.listApprovedMemories === undefined
+          ? []
+          : await options.state.listApprovedMemories({ projectKey: lookup.project.projectKey, scope })
       const local = searchApprovedMemories(approved, args.query, scope)
       if (!local.ok) return emptyValue('invalid-query', scope, project)
       if (scope === 'personal') {
