@@ -32,7 +32,7 @@ describe('standalone bundle manifest', () => {
         './client': { default: './lib/client.js' },
         './package.json': './package.json',
       },
-      files: ['lib', 'cordis.patch.yml', 'README.md', 'README.zh.md', 'SECURITY.md', 'DATA-RETENTION.md', 'LICENSE'],
+      files: ['lib', 'cordis.patch.yml', 'AGENT.md', 'README.md', 'README.zh.md', 'SECURITY.md', 'DATA-RETENTION.md', 'LICENSE'],
       dsh: {
         bundle: { patch: './cordis.patch.yml' },
         client: {

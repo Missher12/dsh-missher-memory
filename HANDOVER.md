@@ -18,7 +18,7 @@
 - 运行逻辑：`src/host/state-store.ts`、`memory-tool.ts`、`brain-provider.ts`、`consolidation-policy.ts`。
 - 回归：`tests/consolidation.spec.ts`、`memory-brain-provider.spec.ts`、`fts-search.spec.ts`、`schema-migration.spec.ts`、`host-activation.spec.ts`。
 - 包与验证：`package.json`、`scripts/native-smoke.mjs`、`scripts/verify-package.mjs`、`tests/manifest.spec.ts`、`tests/cross-platform-ci.spec.ts`、`.github/workflows/cross-platform.yml`（只同步候选包名，不触发 CI）。
-- 文档：`README.md`、`README.zh.md`、`SECURITY.md`、`DATA-RETENTION.md`、`PROJECT_CONTEXT.md`、本文件、`docs/maintenance-audit-2026-09-06.zh.md`。
+- 文档：`AGENT.md`、`README.md`、`README.zh.md`、`SECURITY.md`、`DATA-RETENTION.md`、`PROJECT_CONTEXT.md`、本文件、`docs/maintenance-audit-2026-09-06.zh.md`。`AGENT.md` 已加入包白名单和包验证器。
 
 ## 验证与包
 

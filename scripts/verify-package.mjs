@@ -9,6 +9,7 @@ import { gunzipSync } from 'node:zlib'
 const REQUIRED_FILES = new Set([
   'package/package.json',
   'package/cordis.patch.yml',
+  'package/AGENT.md',
   'package/README.md',
   'package/README.zh.md',
   'package/README.i18n.yaml',

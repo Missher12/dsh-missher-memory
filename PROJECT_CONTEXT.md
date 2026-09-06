@@ -69,7 +69,7 @@
 
 ## 2026-09-06 维护盘点
 
-当前远端基线为 0.2.0，历史 0.1.0 已过时。详细盘点、五项 Bug 修复、宿主依赖及待确认方案见 `docs/maintenance-audit-2026-09-06.zh.md`；交接与最终测试见 `HANDOVER.md`。
+当前远端基线为 0.2.0，历史 0.1.0 已过时。详细盘点、五项 Bug 修复、宿主依赖及待确认方案见 `docs/maintenance-audit-2026-09-06.zh.md`；交接与最终测试见 `HANDOVER.md`。新电脑上的安装者和 Agent 接入流程见 `AGENT.md`，该文件随包交付。
 
 实际运行必须有 `missherBrain` 服务；CLI 安装成功不能证明原版 Harness 激活。smoke 的 Brain 服务为模拟实现。本轮仅维护独立插件，不修改 Desktop/Evolution，不推送或发布。
 

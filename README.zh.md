@@ -4,7 +4,9 @@
 
 [![跨平台 Harness 验证](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml/badge.svg)](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml)
 
-`dsh-missher-memory` 是可独立安装的 DeepSeek Harness bundle，用于恢复超级长项目的架构、决定、进度、失败经验和下一步。0.2.0 新增索引召回和可逆重复记忆整理；它不修改 Harness 核心，也不复制或改写现有旧记忆数据库。
+`dsh-missher-memory` 是可独立安装的 DeepSeek Harness bundle，用于恢复超级长项目的架构、决定、进度、失败经验和下一步。当前包包含索引召回和可逆重复记忆整理；它不修改 Harness 核心，也不复制或改写现有旧记忆数据库。
+
+新电脑接入 Agent 时，请先阅读 [Agent 接入指南](AGENT.md)。指南把安装者步骤和 Agent 工具协议分开，并说明必需的 `missherBrain` Host 服务。
 
 ## 平台支持
 
@@ -31,7 +33,7 @@ dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.2.1-maintenance
 dsh --profile web --dump-config
 ```
 
-配置中同时出现 `dsh-missher-memory` 和 `missher-memory` 即表示 bundle patch 已进入 profile。0.2.0 要求 DeepSeek Harness Desktop 0.3.8 提供 `missherBrain` Host 服务。重启 Harness 后，在“设置 → 超级记忆”完成首次绑定。
+配置中同时出现 `dsh-missher-memory` 和 `missher-memory` 即表示 bundle patch 已进入 profile。自动召回要求兼容的 DeepSeek Harness Desktop 提供 `missherBrain` Host 服务。重启 Harness 后，在“设置 → 超级记忆”完成首次绑定。
 
 全新 Windows/macOS 安装不需要 `vectors.db`：内置项目记忆在用户确认绑定后使用插件自有的 `state.db`。`vectors.db` 只是兼容旧记忆的可选只读来源。如果它不在默认的 `$HOME/.local/share/missher-memory/tencentdb/vectors.db`，启动 Harness 前可把 `MISSHER_TENCENTDB_DIR` 设为包含 `vectors.db` 的现有绝对目录。插件不会创建缺失目录或空数据库，也拒绝符号链接和逃逸路径。
 

@@ -4,7 +4,9 @@ English | [中文](README.zh.md)
 
 [![Cross-platform Harness verification](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml/badge.svg)](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml)
 
-`dsh-missher-memory` is an independently installable DeepSeek Harness bundle for recovering architecture, decisions, progress, failed approaches, and next steps in long-running projects. Version 0.2.0 adds indexed recall and reversible duplicate consolidation. It neither changes Harness core nor copies or modifies an existing legacy database.
+`dsh-missher-memory` is an independently installable DeepSeek Harness bundle for recovering architecture, decisions, progress, failed approaches, and next steps in long-running projects. The current package includes indexed recall and reversible duplicate consolidation. It neither changes Harness core nor copies or modifies an existing legacy database.
+
+For a fresh computer, follow [the Agent integration guide](AGENT.md). It separates operator installation from Agent tool use and explains the required `missherBrain` Host service.
 
 ## Platform support
 
@@ -31,7 +33,7 @@ dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.2.1-maintenance
 dsh --profile web --dump-config
 ```
 
-The bundle patch is active when the configuration contains both `dsh-missher-memory` and `missher-memory`. Version 0.2.0 requires the `missherBrain` Host service shipped by DeepSeek Harness Desktop 0.3.8. Restart Harness and finish the first binding in Settings → Super Memory.
+The bundle patch is active when the configuration contains both `dsh-missher-memory` and `missher-memory`. Automatic recall requires the `missherBrain` Host service from a compatible DeepSeek Harness Desktop release. Restart Harness and finish the first binding in Settings → Super Memory.
 
 A fresh Windows or macOS install needs no `vectors.db`: after explicit project binding, built-in project memory uses the plugin-owned `state.db`. A `vectors.db` is only an optional, read-only source for legacy memory. If it is not at `$HOME/.local/share/missher-memory/tencentdb/vectors.db`, you may set `MISSHER_TENCENTDB_DIR` to the existing absolute directory that contains it before starting Harness. The plugin never creates a missing directory or empty database and rejects links and escaping paths.
 

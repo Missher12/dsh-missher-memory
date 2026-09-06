@@ -24,6 +24,7 @@ describe('published bundle contract', () => {
     expect(manifest.files).toEqual([
       'lib',
       'cordis.patch.yml',
+      'AGENT.md',
       'README.md',
       'README.zh.md',
       'SECURITY.md',
