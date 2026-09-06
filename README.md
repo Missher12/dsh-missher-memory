@@ -27,7 +27,7 @@ Windows ARM and Linux ARM are not claimed until stable native runners and a ship
 The plugin requires a DeepSeek Harness 0.1.x Host with Node `^22.19.0` or `>=24`. The delivered tarball needs no Python, shell script, or native dependency build:
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.2.0.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.2.1-maintenance.0.tgz
 dsh --profile web --dump-config
 ```
 
@@ -86,8 +86,16 @@ Uninstall removes the bundle and profile patch but preserves `$DSH_HOME/missher-
 Before distribution, run:
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.2.0.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.2.0.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.2.1-maintenance.0.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.2.1-maintenance.0.tgz
 ```
 
 `native-smoke.mjs` uses synthetic data only. Passing `--cli /absolute/path/to/dsh-cli.js` additionally installs, composes, and removes the tarball in a temporary profile.
+
+## 2026-09-06 maintenance candidate
+
+Local version `0.2.1-maintenance.0` is unpublished.
+
+The Host requires `missherBrain`; plain Harness installation does not activate the plugin without this service. CLI install/remove evidence is separate from runtime activation. The packaged smoke reports `runtimeMode: cordis-with-synthetic-host-services` and `realHostActivationVerified: false`, and checks reinstall restoration using temporary synthetic data. No real Desktop Brain or UI acceptance is claimed by this smoke.
+
+Reviewed memory remains untrusted historical data, never new authorization. Forgetting removes derived atoms and capsules, while retaining the forgotten candidate for review history. Project JSON export currently excludes capsules and archived atoms and is not a full backup.

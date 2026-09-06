@@ -16,7 +16,7 @@ export interface ConsolidationGroup {
   sourceMemoryIds: string[]
 }
 
-/** Selects only exact normalized duplicates; extractive consolidation cannot invent facts. */
+/** Selects only exact duplicates; extractive consolidation cannot invent facts. */
 export function selectConsolidationGroups(
   atoms: readonly ConsolidationAtom[],
   policy: ConsolidationPolicy,
@@ -25,8 +25,8 @@ export function selectConsolidationGroups(
   for (const atom of atoms) {
     const createdAt = Date.parse(atom.createdAt)
     if (atom.pinned || !Number.isFinite(createdAt) || policy.now - createdAt < policy.minimumAgeMs) continue
-    const normalized = normalizeContent(atom.content)
-    if (normalized === '') continue
+    const normalized = atom.content
+    if (normalized.trim() === '') continue
     const key = `${atom.projectKey}\0${atom.scope}\0${atom.kind}\0${normalized}`
     const group = grouped.get(key) ?? []
     group.push(atom)
@@ -43,12 +43,8 @@ export function selectConsolidationGroups(
         scope: first.scope,
         kind: first.kind,
         topicKey: createHash('sha256').update(key).digest('hex').slice(0, 24),
-        content: first.content.trim(),
+        content: first.content,
         sourceMemoryIds: group.map(atom => atom.memoryId).sort().slice(0, 24),
       }
     })
-}
-
-function normalizeContent(value: string): string {
-  return value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLocaleLowerCase()
 }

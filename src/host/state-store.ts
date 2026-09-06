@@ -581,6 +581,32 @@ export class StateStore {
         | undefined
       if (row === undefined) return { status: 'unknown-candidate' }
       database.exec('BEGIN IMMEDIATE')
+      // Invalidate every derivative, including superseded capsules. Restore surviving
+      // atoms in the same transaction before deleting the forgotten source.
+      const affected = database.prepare(`
+        SELECT capsule_id, source_ids_json, status FROM memory_capsules
+        WHERE EXISTS (
+          SELECT 1 FROM json_each(memory_capsules.source_ids_json) AS source
+          INNER JOIN approved_memories AS memory ON memory.memory_id = source.value
+          WHERE EXISTS (SELECT 1 FROM json_each(memory.sources_json) WHERE value = ?)
+        )
+      `).all(candidateId) as unknown as Array<{ capsule_id: string; source_ids_json: string; status: string }>
+      for (const capsule of affected) {
+        if (capsule.status === 'active') {
+          for (const sourceId of parseStringArray(capsule.source_ids_json)) {
+            const source = database.prepare(`
+              SELECT content FROM approved_memories WHERE memory_id = ? AND lifecycle_state = 'archived'
+                AND NOT EXISTS (SELECT 1 FROM json_each(sources_json) WHERE value = ?)
+            `).get(sourceId, candidateId) as { content: string } | undefined
+            if (source === undefined) continue
+            database.prepare("UPDATE approved_memories SET lifecycle_state = 'active' WHERE memory_id = ?").run(sourceId)
+            database.prepare('INSERT INTO approved_memory_fts (memory_id, terms) VALUES (?, ?)')
+              .run(sourceId, memorySearchTerms(source.content))
+          }
+        }
+        database.prepare('DELETE FROM memory_capsule_fts WHERE capsule_id = ?').run(capsule.capsule_id)
+        database.prepare('DELETE FROM memory_capsules WHERE capsule_id = ?').run(capsule.capsule_id)
+      }
       database.prepare(`
         DELETE FROM approved_memory_fts
         WHERE memory_id IN (
@@ -813,7 +839,7 @@ export class StateStore {
         pinned: number
         lifecycle_state: string
       }>
-      const normalized = normalizeCapsuleContent(input.content)
+      const normalized = input.content
       if (
         rows.length !== sourceIds.length
         || rows.some(row =>
@@ -822,7 +848,7 @@ export class StateStore {
           || row.kind !== input.kind
           || row.pinned !== 0
           || row.lifecycle_state !== 'active'
-          || normalizeCapsuleContent(row.content) !== normalized)
+          || row.content !== normalized)
       ) return { status: 'invalid' }
       const capsuleId = opaqueId(key, 'capsule', `${input.projectKey}\0${sourceIds.join('\0')}\0${normalized}`)
       const timestamp = now()
@@ -1036,8 +1062,15 @@ export class StateStore {
       database.exec('BEGIN IMMEDIATE')
       database.prepare(`
         DELETE FROM approved_memory_fts
-        WHERE memory_id IN (SELECT memory_id FROM approved_memories WHERE project_key = ?)
-      `).run(projectKey)
+        WHERE memory_id IN (
+          SELECT memory_id FROM approved_memories
+          WHERE project_key = ? OR EXISTS (
+            SELECT 1 FROM json_each(approved_memories.sources_json) AS source
+            INNER JOIN candidates AS candidate ON candidate.candidate_id = source.value
+            WHERE candidate.project_key = ?
+          )
+        )
+      `).run(projectKey, projectKey)
       database.prepare(`
         DELETE FROM memory_capsule_fts
         WHERE capsule_id IN (SELECT capsule_id FROM memory_capsules WHERE project_key = ?)
@@ -1484,10 +1517,6 @@ function parseStringArray(value: string): string[] {
   } catch {
     return []
   }
-}
-
-function normalizeCapsuleContent(value: string): string {
-  return value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLocaleLowerCase()
 }
 
 function isMissing(error: unknown): boolean {

@@ -35,7 +35,7 @@ async function main() {
     const synthetic = await createSyntheticFixture(temporaryHome)
     const beforeDatabase = await fileIdentity(synthetic.databasePath)
 
-    const zeroHome = join(temporaryHome, 'zero-home')
+    const zeroHome = temporaryHome
     const zeroState = join(zeroHome, PLUGIN_NAME)
     const mounted = await mount(await loadRuntime(installed.pluginEntry), zeroHome, synthetic.databaseRoot)
     await mounted.core.noteCwd(synthetic.projectA)
@@ -139,6 +139,16 @@ async function main() {
     const uninstall = !await exists(installed.pluginDirectory)
     const statePreserved = await exists(join(zeroState, 'state.db'))
     const adjacentDataPreserved = await exists(installed.adjacentFile)
+    const reinstalled = await installPackage(options, temporaryHome)
+    const restored = await mount(await loadRuntime(reinstalled.pluginEntry), zeroHome, synthetic.databaseRoot)
+    await restored.core.noteCwd(synthetic.projectA)
+    const restoredSnapshot = await restored.remote.snapshot()
+    const restoredSearch = await executeSearch(restored.tool, synthetic.projectA, '独立安装包验收')
+    const reinstallRestored = restoredSnapshot.project?.projectKey === reboundA.project.projectKey
+      && restoredSearch.results.some(row => row.reference.startsWith('approved_'))
+    await restored.dispose()
+    await uninstallPackage(options, temporaryHome, reinstalled)
+    if (!reinstallRestored) throw new Error('reinstall_restore_failed')
     const result = {
       ok: installed.profileInstall
         && uninstall
@@ -149,6 +159,9 @@ async function main() {
       arch: process.arch,
       packageSha256: packageResult.sha256,
       profileMode: options.cli === undefined ? 'simulated' : 'native-cli',
+      runtimeMode: 'cordis-with-synthetic-host-services',
+      realHostActivationVerified: false,
+      reinstallRestored,
       profileInstall: installed.profileInstall,
       zeroState: true,
       search: true,
@@ -182,7 +195,7 @@ async function main() {
 function parseArgs(args) {
   const options = {
     platform: 'current',
-    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.2.0.tgz'),
+    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.2.1-maintenance.0.tgz'),
     cli: undefined,
     profile: 'memory-smoke',
   }

@@ -89,3 +89,16 @@ describe('indexed reviewed memory', () => {
     expect(samples[Math.floor(samples.length * 0.95)]).toBeLessThan(150)
   }, 30_000)
 })
+
+it('deletes personal FTS terms derived from a deleted project', async () => {
+  const f = await boundFixture()
+  await approve(f.store, f.projectKey, 'personal-source', 'Synthetic personal preference.', 'personal')
+  const rows = await f.store.listApprovedMemories({ projectKey: f.projectKey, scope: 'personal' })
+  expect(rows).toHaveLength(1)
+  await f.store.deleteProject(f.projectKey)
+  const db = new DatabaseSync(join(f.stateDirectory, 'state.db'), { readOnly: true })
+  try {
+    expect(db.prepare('SELECT count(*) AS count FROM approved_memory_fts WHERE memory_id = ?').get(rows[0]!.memoryId))
+      .toEqual({ count: 0 })
+  } finally { db.close() }
+})

@@ -123,3 +123,20 @@ describe('MemoryBrainProvider', () => {
     provider.forgetSession(request.sessionId)
   })
 })
+
+it('enforces the combined project recall count and serialized byte budget', async () => {
+  const row = { memoryId: 'approved_one', content: '架构'.repeat(2000), updatedAt: '2026-08-01', pinned: false }
+  const state = {
+    lookupProject: vi.fn().mockResolvedValue({ status: 'bound', project: { ...project, recallLimit: 1, recallByteBudget: 800 } }),
+    searchApprovedMemories: vi.fn().mockResolvedValue([row]),
+    searchMemoryCapsules: vi.fn().mockResolvedValue([]),
+    countApprovedMemories: vi.fn().mockResolvedValue(1),
+  }
+  const provider = new MemoryBrainProvider({ state: state as never, legacy: { search: vi.fn().mockResolvedValue({ status: 'not-configured' }) }, database: {}, timeoutMs: 100 })
+  provider.noteSession(request.sessionId, '/synthetic/project')
+  const batch = await provider.prepare(request)
+  expect(batch.items).toHaveLength(1)
+  expect(Buffer.byteLength(JSON.stringify(batch.items))).toBeLessThanOrEqual(800)
+  expect(batch.items[0]!.text.length).toBeGreaterThan(0)
+  expect(batch.items[0]!.text).not.toContain('�')
+})

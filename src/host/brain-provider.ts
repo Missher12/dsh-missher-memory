@@ -126,7 +126,11 @@ export class MemoryBrainProvider implements MemoryBrainProviderLike {
           pinned: false,
         }))
       : []
-    return preparedBatch([...reviewed, ...capsuleItems, ...legacyItems])
+    return preparedBatch(boundContributions(
+      [...reviewed, ...capsuleItems, ...legacyItems],
+      limit,
+      Math.min(this.byteBudget, lookup.project.recallByteBudget),
+    ))
   }
 
   async status(): Promise<{ state: 'ready' | 'disabled' | 'unavailable'; count: number }> {
@@ -180,4 +184,32 @@ function preparedBatch(items: readonly MemoryBrainContribution[]): MemoryPrepare
     },
     cancel: async () => { settled = true },
   }
+}
+
+/** Enforces the per-project budget before handing untrusted data to the host. */
+function boundContributions(
+  rows: readonly MemoryBrainContribution[], limit: number, maxBytes: number,
+): MemoryBrainContribution[] {
+  const items: MemoryBrainContribution[] = []
+  const seen = new Set<string>()
+  for (const row of rows) {
+    if (items.length >= Math.min(5, limit)) break
+    if (seen.has(row.handle) || !inspectPrivacy(row.text).safe) continue
+    const characters = Array.from(row.text)
+    let low = 1
+    let high = characters.length
+    let accepted: MemoryBrainContribution | undefined
+    while (low <= high) {
+      const middle = Math.floor((low + high) / 2)
+      const candidate = { ...row, text: characters.slice(0, middle).join('') }
+      if (Buffer.byteLength(JSON.stringify([...items, candidate]), 'utf8') <= maxBytes) {
+        accepted = candidate
+        low = middle + 1
+      } else high = middle - 1
+    }
+    if (accepted === undefined) continue
+    items.push(accepted)
+    seen.add(row.handle)
+  }
+  return items
 }

@@ -2,6 +2,7 @@ import { defineTool, type ValueSchemaSpec } from '@deepseek-ai/dsh-tools'
 import type { MemoryDatabasePathOptions } from './path-policy.ts'
 import type { MemorySearchService } from './search-service.ts'
 import type { StateStore } from './state-store.ts'
+import { inspectPrivacy } from './privacy.ts'
 import { applySearchBudget } from './budget.ts'
 import { searchApprovedMemories } from './approved-search.ts'
 
@@ -82,7 +83,7 @@ export interface MemoryToolValue {
 /** Dependencies and deployment tunables for `memory_search`. */
 export interface MemorySearchToolOptions {
   state: Pick<StateStore, 'lookupProject'>
-    & Partial<Pick<StateStore, 'listApprovedMemories' | 'searchApprovedMemories'>>
+    & Partial<Pick<StateStore, 'listApprovedMemories' | 'searchApprovedMemories' | 'searchMemoryCapsules'>>
   search: Pick<MemorySearchService, 'search'>
   database: MemoryDatabasePathOptions
   searchTimeoutMs: number
@@ -137,6 +138,19 @@ export function createMemorySearchTool(options: MemorySearchToolOptions) {
       if (scope === 'personal') {
         const budget = applySearchBudget(local.rows, { maxResults: limit, maxBytes: options.searchByteBudget })
         return { status: 'ready', scope, project, ...budget, rejectedSensitive: local.rejectedSensitive }
+      }
+      const capsules = await options.state.searchMemoryCapsules?.({
+        projectKey: lookup.project.projectKey, query: args.query, limit,
+      }) ?? []
+      for (const capsule of capsules) {
+        if (!inspectPrivacy(capsule.content).safe) {
+          local.rejectedSensitive += 1
+          continue
+        }
+        local.rows.push({
+          excerpt: capsule.content, kind: capsule.kind, source: 'reviewed memory capsule',
+          recordedAt: capsule.updatedAt, reference: capsule.capsuleId,
+        })
       }
       const result = await options.search.search({
         database: options.database,

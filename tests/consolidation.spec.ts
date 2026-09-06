@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ConsolidationService } from '../src/host/consolidation-service.ts'
 import { selectConsolidationGroups } from '../src/host/consolidation-policy.ts'
+import { createMemorySearchTool } from '../src/host/memory-tool.ts'
 import { StateStore, type ConsolidationAtom } from '../src/host/state-store.ts'
 
 const roots: string[] = []
@@ -88,4 +89,74 @@ describe('reversible reviewed-memory consolidation', () => {
     await expect(store.listMemoryCapsules({ projectKey: bound.project.projectKey, scope: 'project' }))
       .resolves.toEqual([expect.objectContaining({ status: 'superseded' })])
   })
+})
+
+async function capsuleFixture() {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-memory-forget-'))
+  roots.push(root)
+  const cwd = join(root, 'project')
+  await mkdir(cwd)
+  const stateDirectory = join(root, 'state')
+  const store = new StateStore({ stateDirectory })
+  const bound = await store.bindProject({ cwd, sessionKeys: [] })
+  if (bound.status !== 'bound') throw new Error('binding failed')
+  const candidateIds: string[] = []
+  const sourceMemoryIds: string[] = []
+  for (let i = 0; i < 4; i += 1) {
+    const candidate = await store.createPendingCandidates(bound.project.projectKey, `source-${i}`, [{
+      scope: 'project', kind: 'decision', content: 'Synthetic architecture decision.',
+    }])
+    if (candidate.status !== 'created') throw new Error('candidate failed')
+    candidateIds.push(candidate.candidateIds[0]!)
+    const approved = await store.approveCandidate(candidate.candidateIds[0]!, {})
+    if (approved.status !== 'approved') throw new Error('approval failed')
+    sourceMemoryIds.push(approved.memoryId)
+  }
+  const capsule = await store.commitCapsule({
+    projectKey: bound.project.projectKey, scope: 'project', kind: 'decision', topicKey: 'synthetic',
+    content: 'Synthetic architecture decision.', sourceMemoryIds, policyVersion: 1,
+  })
+  if (capsule.status !== 'consolidated') throw new Error('capsule failed')
+  return { store, cwd, stateDirectory, projectKey: bound.project.projectKey, candidateIds, capsuleId: capsule.capsuleId }
+}
+
+describe('consolidated memory lifecycle regressions', () => {
+  it('keeps consolidated facts discoverable through the explicit search tool', async () => {
+    const f = await capsuleFixture()
+    const tool = createMemorySearchTool({
+      state: f.store,
+      search: { search: async () => ({ status: 'not-configured', results: [], truncated: false, usedBytes: 0, rejectedSensitive: 0 }) },
+      database: {}, searchTimeoutMs: 100, searchByteBudget: 3000,
+    })
+    const result = await tool.execute({ query: 'architecture' }, {
+      agent: { session: { header: { cwd: f.cwd } } }, signal: new AbortController().signal,
+    } as never)
+    expect(result).toMatchObject({ status: 'ready', results: [{ reference: f.capsuleId }] })
+  })
+
+  it.each([false, true])('removes derived capsules on forgetting, including rolled back=%s', async (rolledBack) => {
+    const f = await capsuleFixture()
+    if (rolledBack) await f.store.rollbackCapsule(f.capsuleId)
+    expect(await f.store.forgetCandidate(f.candidateIds[0]!)).toEqual({ status: 'forgotten' })
+    expect(await f.store.searchMemoryCapsules({ projectKey: f.projectKey, query: 'architecture', limit: 5 })).toEqual([])
+    expect(await f.store.listMemoryCapsules({ projectKey: f.projectKey, scope: 'project' })).toEqual([])
+    expect(await f.store.listApprovedMemories({ projectKey: f.projectKey, scope: 'project' })).toHaveLength(3)
+    expect(await f.store.rollbackCapsule(f.capsuleId)).toEqual({ status: 'unknown-capsule' })
+    const reopened = new StateStore({ stateDirectory: f.stateDirectory })
+    expect(await reopened.searchApprovedMemories({ projectKey: f.projectKey, scope: 'project', query: 'architecture', limit: 5 })).toHaveLength(3)
+    for (const id of f.candidateIds.slice(1)) await reopened.forgetCandidate(id)
+    expect(await reopened.searchApprovedMemories({ projectKey: f.projectKey, scope: 'project', query: 'architecture', limit: 5 })).toEqual([])
+  })
+})
+
+it('does not treat case-sensitive identifiers or significant whitespace as exact duplicates', () => {
+  const rows = [
+    'Use CacheKey for lookup.', 'Use cachekey for lookup.',
+    'Use CacheKey for lookup.', 'Use cachekey for lookup.',
+    'Literal value: a  b', 'Literal value: a b',
+    'Literal value: a  b', 'Literal value: a b',
+  ].map((content, index) => atom({ memoryId: `approved_${index}`, content }))
+  expect(selectConsolidationGroups(rows, {
+    now: Date.parse('2026-08-24'), minimumAgeMs: 7 * 86400000, minimumSources: 4,
+  })).toEqual([])
 })

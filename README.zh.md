@@ -27,7 +27,7 @@ bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建�
 需要 DeepSeek Harness 0.1.x Host（Node `^22.19.0` 或 `>=24`）。使用交付的 tarball，不需要 Python、shell 脚本或原生依赖构建：
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.2.0.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.2.1-maintenance.0.tgz
 dsh --profile web --dump-config
 ```
 
@@ -86,8 +86,14 @@ dsh --profile web --dump-config
 发布前可运行：
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.2.0.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.2.0.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.2.1-maintenance.0.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.2.1-maintenance.0.tgz
 ```
 
 `native-smoke.mjs` 只使用合成数据库；传入 `--cli /absolute/path/to/dsh-cli.js` 时还会在临时 profile 中真实安装、组合并卸载 tarball。
+
+## 2026-09-06 维护候选包
+
+本地候选版本为 `0.2.1-maintenance.0`，尚未发布。Host 必须有 `missherBrain`；原版 Harness 安装成功不代表插件激活。CLI 安装/卸载与真实运行时激活是不同证据。包 smoke 输出 `runtimeMode: cordis-with-synthetic-host-services` 和 `realHostActivationVerified: false`，并使用临时合成数据验证重装恢复，不代表真实 Desktop Brain 或界面验收。
+
+已审核记忆仍是历史数据，不能提供新授权。遗忘清除派生原子和胶囊，但保留 forgotten 候选作为审核历史。项目 JSON 导出暂不包含胶囊和 archived 原子，不是完整备份。

@@ -30,7 +30,7 @@ async function legacyFixture() {
 
   const databasePath = join(stateDirectory, 'state.db')
   const database = new DatabaseSync(databasePath)
-  database.exec('DROP TABLE IF EXISTS memory_capsules; DROP TABLE IF EXISTS maintenance_runs;')
+  database.exec('DROP TABLE IF EXISTS memory_capsules; DROP TABLE IF EXISTS maintenance_runs; DROP TABLE IF EXISTS approved_memory_fts; DROP TABLE IF EXISTS memory_capsule_fts;')
   const columns = database.prepare('PRAGMA table_info(approved_memories)').all() as unknown as Array<{ name: string }>
   if (columns.some(column => column.name === 'lifecycle_state')) {
     database.exec('ALTER TABLE approved_memories DROP COLUMN lifecycle_state')
@@ -51,6 +51,10 @@ describe('schema two migration', () => {
     const reopened = new StateStore({ stateDirectory: fixture.stateDirectory })
 
     await expect(reopened.lookupProject(fixture.cwd)).resolves.toMatchObject({ status: 'bound' })
+
+    const bound = await reopened.lookupProject(fixture.cwd)
+    if (bound.status !== 'bound') throw new Error('migration failed')
+    expect(await reopened.searchApprovedMemories({ projectKey: bound.project.projectKey, scope: 'project', query: 'artifact', limit: 5 })).toHaveLength(1)
 
     const database = new DatabaseSync(fixture.databasePath, { readOnly: true })
     expect((database.prepare('PRAGMA user_version').get() as { user_version: number }).user_version).toBe(2)
@@ -83,4 +87,20 @@ describe('schema two migration', () => {
     expect((database.prepare('PRAGMA user_version').get() as { user_version: number }).user_version).toBe(2)
     database.close()
   })
+})
+
+it('rolls back a failed v1 migration without changing source data or schema version', async () => {
+  const f = await legacyFixture()
+  const database = new DatabaseSync(f.databasePath)
+  database.exec('CREATE TABLE memory_capsules (sentinel TEXT)')
+  database.close()
+  expect(await new StateStore({ stateDirectory: f.stateDirectory }).lookupProject(f.cwd))
+    .toEqual({ status: 'incompatible-state' })
+  const reopened = new DatabaseSync(f.databasePath, { readOnly: true })
+  try {
+    expect(reopened.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 })
+    expect(reopened.prepare('PRAGMA table_info(approved_memories)').all().some(row => row.name === 'lifecycle_state')).toBe(false)
+    expect(reopened.prepare(`SELECT m.content, m.sources_json, b.session_ciphertext
+      FROM approved_memories AS m CROSS JOIN bindings AS b LIMIT 1`).get()).toEqual(f.before)
+  } finally { reopened.close() }
 })

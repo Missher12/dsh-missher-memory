@@ -10,7 +10,7 @@ describe('standalone bundle manifest', () => {
 
     expect(manifest).toMatchObject({
       name: 'dsh-missher-memory',
-      version: '0.2.0',
+      version: '0.2.1-maintenance.0',
       private: false,
       type: 'module',
       repository: {
