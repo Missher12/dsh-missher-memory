@@ -13,8 +13,6 @@ jobs:
     name: Canonical universal package
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    env:
-      DSH_HOME: ${{ runner.temp }}/dsh-memory-ci
     steps:
       - name: Checkout plugin
         uses: actions/checkout@v6
@@ -34,6 +32,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Test, build, and verify canonical package
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-memory-ci
         run: |
           pnpm install --frozen-lockfile
           pnpm test
@@ -76,8 +76,6 @@ jobs:
             artifact: linux-x64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
-    env:
-      DSH_HOME: ${{ runner.temp }}/dsh-memory-ci
     steps:
       - name: Checkout plugin
         uses: actions/checkout@v6
@@ -105,6 +103,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install and test plugin on native runner
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-memory-ci
         run: |
           pnpm install --frozen-lockfile
           pnpm test
@@ -120,6 +120,8 @@ jobs:
         run: node scripts/verify-package.mjs ./dist/universal/dsh-missher-memory-0.3.0-cordis.0.tgz > ./dist/package-verification.json
 
       - name: Verify independent Cordis service and concurrent lifecycle
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-memory-ci
         run: node scripts/cordis-smoke.mjs ./dist/universal/dsh-missher-memory-0.3.0-cordis.0.tgz > ./dist/cordis-smoke.json
 
       - name: Build exact Harness CLI
@@ -131,6 +133,8 @@ jobs:
           pnpm run build:lib
 
       - name: Run native install and lifecycle smoke
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-memory-ci
         run: node scripts/native-smoke.mjs --platform ${{ matrix.platform }} --archive ./dist/universal/dsh-missher-memory-0.3.0-cordis.0.tgz --cli ./.harness-036/apps/cli/lib/bin.js > ./dist/native-smoke.json
 
       - name: Upload acceptance evidence
