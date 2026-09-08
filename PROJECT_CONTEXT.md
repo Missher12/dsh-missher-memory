@@ -2,9 +2,9 @@
 
 ## 当前摘要（2026-09-08）
 
-独立仓库 `Missher12/dsh-missher-memory`；本地候选 `0.3.0-cordis.0`，schema 2。用户已授权按 Cordis 方向实现，MCP/CLI/HTTP 方案撤回。Core 与 Harness、Brain 适配已分离；本节取代此前“整个插件必需 Brain”的描述。
+独立仓库 `Missher12/dsh-missher-memory`；Cordis 预发布版本 `0.3.0-cordis.0`，schema 2。用户已授权按 Cordis 方向实现，MCP/CLI/HTTP 方案撤回。Core 与 Harness、Brain 适配已分离；本节取代此前“整个插件必需 Brain”的描述。
 
-工作树为 `.worktrees/memory-maintenance`，分支 `maintenance/memory-audit-20260906`。本轮基线完整 SHA 为 `887f2ca838452b76219827fdf11d4e1e089d73b1`；最终 SHA 与安装包校验和见 `dist/cordis-evidence/source-revision.json` 和 `package-verification.json`。仅本地提交和打包，不 push/tag/Release。
+工作树为 `.worktrees/memory-maintenance`，分支 `maintenance/memory-audit-20260906`。本轮基线完整 SHA 为 `887f2ca838452b76219827fdf11d4e1e089d73b1`；最终 SHA 与安装包校验和见 `dist/cordis-evidence/source-revision.json` 和 `package-verification.json`。2026-09-08 用户明确授权“上”架：允许发布该预发布版本并提交商店收录 PR。发布目标为 `v0.3.0-cordis.0`，商店使用固定 Release tarball；收录须经上游维护者合并，不以 PR 已提交代替上架。发布状态以 GitHub Release、收录 PR 和在线 plugins.json 为准，发布验收证据保存在 `dist/store-release/`。
 
 ## 目标与边界
 
@@ -41,7 +41,7 @@ Core 不自动读取其他 Agent 的会话；宿主负责把可信项目上下�
 
 已实测 darwin-x64，Node 25.6.0；包 Core 另在 Node 22.19.0 验证。运行时版本为上游 cordis 4.0.0-rc.9 与 @deepseek-ai/cordis 4.0.1。上游 rc.9 类型声明的无扩展名 re-export 与 TS NodeNext 不兼容；JS 运行时与 Core 独立类型入口分别核验。
 
-真实 Agent 模型调用、Desktop Brain 注入和设置页 UI 尚未验收。Windows/ARM/Linux 本轮未运行原生验收；CI 新增了 Cordis smoke，但未触发远端运行。
+真实 Agent 模型调用、Desktop Brain 注入和设置页 UI 尚未验收。实现阶段未运行 Windows/ARM/Linux 原生验收；上架阶段运行跨平台 CI，结果与完整 SHA 以对应 Actions run 为准。CI 使用 runner 临时 DSH_HOME，不使用真实记忆。
 
 ## 后续工作
 

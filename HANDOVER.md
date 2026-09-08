@@ -9,7 +9,7 @@
 - 本轮开始 SHA：`887f2ca838452b76219827fdf11d4e1e089d73b1`，已有维护修复及 AGENT.md。
 - 工作树：`/Users/missher/Documents/ChatGPT/dsh-missher-memory/.worktrees/memory-maintenance`。
 - 分支：`maintenance/memory-audit-20260906`。
-- 候选版本：`0.3.0-cordis.0`；schema 2；只本地提交，不推送、tag 或发布。
+- 发布版本：`0.3.0-cordis.0`（预发布）；schema 2。2026-09-08 用户明确授权发布与 DSH 商店收录；仅本插件范围。
 - 最终完整 SHA、父提交、修改列表与包哈希在 `dist/cordis-evidence/`；用 `git rev-parse HEAD` 核验，不用本交接文本形成自引用 SHA。
 
 ## 实现
@@ -21,7 +21,7 @@
 5. key.bin 使用完整写入后原子发布；schema/FTS 初始化与迁移原子化；候选创建、审核及遗忘的相关状态在事务中检查。幂等重试不重复创建审计。定向 get 可追溯胶囊的归档来源。
    已有数据库缺失密钥时，重新绑定返回 corrupt，保持密钥缺失与数据库字节不变，不生成错误替代密钥。
 6. 安装包新增 CORDIS.md、core JS/类型入口和共享 chunk。Host peer 包保持可选；上游 cordis 仅用于开发验证，不捆绑第二个 Cordis runtime。
-7. CI 增加独立 Cordis smoke 与对应证据，版本路径同步；未触发远端 CI。
+7. CI 增加独立 Cordis smoke 与对应证据，版本路径同步；实现阶段未触发；发布阶段运行远端 CI 并记录 run/SHA。
 
 ## 修改文件
 
@@ -55,4 +55,11 @@ CLI 安装后首次来源列表为空，诊断确认数据库 ready、项目候�
 - 上游 rc.9 的声明文件在 NodeNext 有无扩展名 re-export 问题；已验证 JS runtime，未声称修复上游类型包。Core 自身只依赖结构化 Context 类型。
 - 真实 Agent 模型、Desktop Brain 注入和设置页 UI 尚未验收；其他平台本轮未原生运行，不能用 CI 配置代替结果。
 - schema 2 未新增过期/纠正链/冲突解决；自有 SQLite 查询仍同步；完整备份恢复未实施；forgotten 候选正文仍保留。此前规划的这些增强继续独立推进，不混入本次 Cordis 接入完成声明。
-- 任何后续源码或打包文档修改都需要重建包并重绑最终证据。未经指令不 push/tag/Release，不编辑其他工作树或真实数据。
+- 任何后续源码或打包文档修改都需要重建包并重绑最终证据。本次已有发布指令；不编辑其他插件、Desktop 工作树或真实数据。商店 PR 仅添加本插件条目。
+
+## 商店发布流程（2026-09-08）
+
+- 发布 `v0.3.0-cordis.0` 为 GitHub prerelease，保留真实 Agent/UI 验收限制，不把候选提升为稳定版。
+- 收录源：`awesome-dsh-plugin/awesome-dsh-plugin` 的 `data/plugins/Missher12__dsh-missher-memory.yml`，分类 memory；只提交这一条目，使用固定版本 `.tgz` Release URL。
+- 远端分支以 fast-forward 发布，不改写历史；包与证据绑定同一提交，公开下载后复核 SHA-256。
+- 发布/收录状态分别查询 GitHub Release、收录 PR、在线 `https://awesome-dsh-plugin.com/plugins.json`。PR 等待维护者合并期间，商店可能仍搜不到。公开验收记录在 `dist/store-release/`，不发布含本机路径的旧 source-revision.json。

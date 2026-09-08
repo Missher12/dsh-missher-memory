@@ -13,6 +13,8 @@ jobs:
     name: Canonical universal package
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      DSH_HOME: ${{ runner.temp }}/dsh-memory-ci
     steps:
       - name: Checkout plugin
         uses: actions/checkout@v6
@@ -74,6 +76,8 @@ jobs:
             artifact: linux-x64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    env:
+      DSH_HOME: ${{ runner.temp }}/dsh-memory-ci
     steps:
       - name: Checkout plugin
         uses: actions/checkout@v6
