@@ -72,3 +72,5 @@ CLI 安装后首次来源列表为空，诊断确认数据库 ready、项目候�
 - CI：https://github.com/Missher12/dsh-missher-memory/actions/runs/34241169065 ，五个 job 全绿；macOS Intel/ARM64、Windows x64、Linux x64 使用相同包，通过 121 项测试、Cordis lifecycle、Harness CLI 安装/卸载/重装恢复。均为临时合成数据，真实模型与 Desktop UI 仍未验收。
 - 商店 PR：https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/4671 ，只新增 `data/plugins/Missher12__dsh-missher-memory.yml`；提交时 OPEN，等待维护者。合并后还需检查网站目录是否已更新。
 - 发布材料/公开下载验收/PR 和商店快照：`dist/store-release/`。交接文档更新不会移动 tag、覆盖包或修改测试过的代码。
+
+商店检查补充（2026-09-08）：PR #4671 的 Submission gate 已通过；PR check 在整站构建阶段被上游三个 wwweljf/dsh-plugins 条目的 `no added-date derivable` 错误阻断。未修改这些其他插件条目；已在 PR 正文附上 run 34242256495 和错误证据，等待上游修复与维护者审核。此阻断不影响已发布包的四平台验收。

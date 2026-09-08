@@ -60,3 +60,5 @@ Core 不自动读取其他 Agent 的会话；宿主负责把可信项目上下�
 - 包：177387 bytes；SHA-256 `6b1a8a4fe4b5e90e94e9c6ef3406fa1347551efee45a8c352d5e0b57d810d886`。包、checksum、release-verification.json 三个附件均已匿名下载并逐字节匹配。
 - [CI run 34241169065](https://github.com/Missher12/dsh-missher-memory/actions/runs/34241169065)：五个 job 全部 success，四个平台验收证据已归档。
 - [商店收录 PR #4671](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/4671)：只新增本插件 YAML；提交时 OPEN，等待上游审核/合并。在线 plugins.json 当时仍无该条目，不能宣称已经可搜索。
+
+商店检查补充（2026-09-08）：PR #4671 的 Submission gate 已通过；PR check 在整站构建阶段被上游三个 wwweljf/dsh-plugins 条目的 `no added-date derivable` 错误阻断。未修改这些其他插件条目；已在 PR 正文附上 run 34242256495 和错误证据，等待上游修复与维护者审核。此阻断不影响已发布包的四平台验收。
