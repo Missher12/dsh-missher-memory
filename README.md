@@ -29,7 +29,7 @@ Windows ARM and Linux ARM are not claimed until stable native runners and a ship
 The plugin requires a DeepSeek Harness 0.1.x Host with Node `^22.19.0` or `>=24`. The delivered tarball needs no Python, shell script, or native dependency build:
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.3.0-cordis.0.tgz
+dsh plugin --profile web add https://github.com/Missher12/dsh-missher-memory/releases/download/v0.3.0-cordis.0/dsh-missher-memory-0.3.0-cordis.0.tgz
 dsh --profile web --dump-config
 ```
 
@@ -94,9 +94,9 @@ node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.3.0-cordis.0.t
 
 `native-smoke.mjs` uses synthetic data only. Passing `--cli /absolute/path/to/dsh-cli.js` additionally installs, composes, and removes the tarball in a temporary profile.
 
-## 2026-09-06 maintenance candidate
+## Cordis prerelease status
 
-Local version `0.3.0-cordis.0` is unpublished.
+`0.3.0-cordis.0` is a prerelease. Download the prebuilt package and check version-specific verification in [the release notes](https://github.com/Missher12/dsh-missher-memory/releases/tag/v0.3.0-cordis.0). Store inclusion is separate and depends on the curated registry accepting the entry.
 
 The Cordis upgrade removes the mandatory Brain dependency. The earlier 117-test maintenance evidence below predates this upgrade; see CORDIS.md and the current delivery report for fresh verification. CLI install/remove evidence is separate from runtime activation. The packaged smoke reports `runtimeMode: cordis-with-synthetic-host-services` and `realHostActivationVerified: false`, and checks reinstall restoration using temporary synthetic data. No real Desktop Brain or UI acceptance is claimed by this smoke.
 

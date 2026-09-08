@@ -29,7 +29,7 @@ Core 是纯 JavaScript，运行时只导入 Node 内建模块；Harness 适配�
 需要 DeepSeek Harness 0.1.x Host（Node `^22.19.0` 或 `>=24`）。使用交付的 tarball，不需要 Python、shell 脚本或原生依赖构建：
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.3.0-cordis.0.tgz
+dsh plugin --profile web add https://github.com/Missher12/dsh-missher-memory/releases/download/v0.3.0-cordis.0/dsh-missher-memory-0.3.0-cordis.0.tgz
 dsh --profile web --dump-config
 ```
 
@@ -96,6 +96,6 @@ node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.3.0-cordis.0.t
 
 ## 2026-09-06 维护候选包
 
-本地候选版本为 `0.3.0-cordis.0`，尚未发布。本次 Cordis 升级已解除必需 Brain 依赖；安装成功仍不代表当前 Agent 已发现并能调用工具。CLI 安装/卸载与真实运行时激活是不同证据。包 smoke 输出 `runtimeMode: cordis-with-synthetic-host-services` 和 `realHostActivationVerified: false`，并使用临时合成数据验证重装恢复，不代表真实 Desktop Brain 或界面验收。
+`0.3.0-cordis.0` 为预发布版本。预构建安装包和对应验证结果见 [Release 说明](https://github.com/Missher12/dsh-missher-memory/releases/tag/v0.3.0-cordis.0)；商店是否可搜索还取决于收录条目是否被合并。本次 Cordis 升级已解除必需 Brain 依赖；安装成功仍不代表当前 Agent 已发现并能调用工具。CLI 安装/卸载与真实运行时激活是不同证据。包 smoke 输出 `runtimeMode: cordis-with-synthetic-host-services` 和 `realHostActivationVerified: false`，并使用临时合成数据验证重装恢复，不代表真实 Desktop Brain 或界面验收。
 
 已审核记忆仍是历史数据，不能提供新授权。遗忘清除派生原子和胶囊，但保留 forgotten 候选作为审核历史。项目 JSON 导出暂不包含胶囊和 archived 原子，不是完整备份。
