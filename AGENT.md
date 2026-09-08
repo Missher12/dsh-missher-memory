@@ -14,16 +14,18 @@ This guide gives an operator and an Agent one shared setup contract. The Bundle 
 
 ## Understand the connection
 
-The plugin runs inside the Harness Host. It does not expose an HTTP endpoint or an independent Model Context Protocol (MCP) server. A successful connection has four visible parts:
+For a reusable Cordis service without Harness, follow [CORDIS.md](CORDIS.md). The steps below describe the Harness Bundle adapter.
+
+The Bundle adapter runs inside the Harness Host. It does not expose an HTTP endpoint or an independent Model Context Protocol (MCP) server. A successful connection has four visible parts:
 
 | Check | Expected result |
 | --- | --- |
 | Package | `dsh-missher-memory` is installed in the selected profile |
 | Bundle patch | The profile contains `dsh-missher-memory` and `missher-memory` |
-| Host services | Harness exposes `tools`, `dshHomePath`, and `missherBrain` |
+| Host services | Harness exposes `tools` and `dshHomePath`; `missherBrain` is optional |
 | Agent capability | The Agent can call `memory_search` in a top-level project session |
 
-`missherBrain` supplies automatic recall. The independent plugin repository is the source of this Bundle. The Desktop-managed memory package is a host layer and is not this plugin's source.
+`missherBrain` supplies automatic recall through a separate adapter. Its absence does not prevent Core activation or manual search. The independent plugin repository is the source of this Bundle. The Desktop-managed memory package is a host layer and is not this plugin's source.
 
 ## Prepare a fresh computer
 
@@ -33,7 +35,7 @@ You need these items:
 
 - A released or locally built `dsh-missher-memory-version.tgz`
 - The `dsh` command on `PATH`
-- A Desktop release that provides `missherBrain`
+- A Host that provides `tools` and `dshHomePath`; a compatible `missherBrain` service is needed only for automatic recall
 - A top-level Harness session opened in the target project
 
 You do not need `vectors.db` for a new installation. The plugin creates its own state only after an explicit project binding. An existing `vectors.db` is an optional, read-only legacy source.
@@ -138,7 +140,7 @@ All failure statuses are fail-open. They must not block the current user task or
 
 Newly bound projects enable candidate capture and automatic recall by default. Capture buffers direct user and Agent text from top-level sessions. It ignores tool output, plugin injections, and delegated sessions.
 
-Session disposal creates pending candidates. Approval is a separate operator action. An Agent must not describe a pending candidate as durable memory. Edit, merge, approve, pin, forget, export, and project deletion actions belong to the plugin settings flow.
+Session disposal creates pending candidates. Approval is a separate operator action. A pending candidate is persisted but must not be described as an approved, recallable fact. Edit, merge, approve, pin, forget, export, and project deletion actions belong to the plugin settings flow.
 
 Memory stores reviewed facts. Evolution owns rule promotion and rule lifecycle. Do not ask this plugin to promote a memory into an instruction or an automatic policy.
 
@@ -159,4 +161,4 @@ Use synthetic data for acceptance. Do not use real memory text as a test fixture
 
 ## When this guide is insufficient
 
-Markdown cannot install the Bundle or create `missherBrain`. If `memory_search` is absent after restart, inspect the selected profile, the Desktop release, and the Host service inventory. Do not silently fall back to the Desktop-managed memory layer or treat a successful `dsh plugin add` command as runtime activation.
+Markdown cannot install the Bundle or register Agent tools. Missing `missherBrain` only disables automatic recall. If `memory_search` is absent after restart, inspect the selected profile, the Desktop release, and the Host service inventory. Do not silently fall back to the Desktop-managed memory layer or treat a successful `dsh plugin add` command as runtime activation.

@@ -6,13 +6,13 @@
 
 ## 插件自有数据
 
-插件状态根为 `$DSH_HOME/missher-memory/`：
+Harness 插件状态根为 `$DSH_HOME/missher-memory/`；通用 Cordis Core 使用操作者显式配置的绝对 `stateDirectory`，不会自动读取 DSH_HOME 或寻找其他宿主的数据：
 
 - `state.db` 保存 schema 版本、随机项目键、项目 basename 和短 hash、HMAC cwd 别名、捕获/召回设置、加密外部 session 标识、候选正文、批准正文、可逆胶囊、维护计数和不含原始目标 ID 的审核日志。
 - 本机密钥文件用于项目别名摘要、外部 session 标识加密和 opaque ID。密钥与 `state.db` 必须一起保留；丢失密钥后插件会把状态视为损坏，而不是静默重建。
 - 绝对 cwd、原始工具输出、原始插件注入、数据库记录副本和未审核的整段会话不会持久化。
 
-只读搜索和状态检查不创建这些文件。首次显式项目绑定、显式设置变更或在已开启捕获后生成候选，才允许创建状态根。
+空状态搜索和状态检查不创建这些文件。首次显式绑定才会初始化状态；Core 的显式 propose 在已绑定项目中创建待审核候选，不依赖 Harness 自动捕获开关。已有状态的 schema/FTS 维护可能写盘，不能描述成纯只读磁盘访问。
 
 ## 审核操作
 
@@ -31,5 +31,7 @@
 ## 卸载与彻底清除
 
 `dsh plugin --profile <profile> remove dsh-missher-memory` 只卸载代码和 profile patch，默认保留插件状态。这样重装时可以恢复绑定和审核记录。
+
+独立 Cordis 宿主卸载插件会释放服务及 Worker，不删除 stateDirectory。若使用 npm 管理代码，卸载包也不会自动清除该外部状态目录。多个宿主共享状态时，彻底清除前必须停止所有使用它的宿主，而不只是 Harness。
 
 彻底清除前先在设置页完成所需导出，关闭所有 Harness 进程，确认 `$DSH_HOME` 指向目标 profile 所用的数据根，然后由用户删除确切的 `$DSH_HOME/missher-memory/` 目录。删除不可恢复；不要把外部数据库目录作为删除目标。

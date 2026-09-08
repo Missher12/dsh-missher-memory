@@ -6,11 +6,11 @@
 
 `dsh-missher-memory` 是可独立安装的 DeepSeek Harness bundle，用于恢复超级长项目的架构、决定、进度、失败经验和下一步。当前包包含索引召回和可逆重复记忆整理；它不修改 Harness 核心，也不复制或改写现有旧记忆数据库。
 
-新电脑接入 Agent 时，请先阅读 [Agent 接入指南](AGENT.md)。指南把安装者步骤和 Agent 工具协议分开，并说明必需的 `missherBrain` Host 服务。
+新电脑使用通用 Cordis 服务时，请阅读 [Cordis 接入指南](CORDIS.md)，加载 `dsh-missher-memory/core`。既有 Harness 用户继续阅读 [Agent 接入指南](AGENT.md)。Core 提供不依赖 Harness 的 `missherMemoryService`；Brain 现在仅影响 Harness 自动召回。
 
 ## 平台支持
 
-bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建并验证一个 canonical `.tgz`，再让 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 通过固定的 Harness CLI 安装完全相同的字节。必需检查包括单元测试、类型检查、安装包安全、真实 CLI 安装/卸载和合成数据库生命周期。矩阵固定到 DeepSeek Harness Desktop 0.3.6 / Harness 0.1.1-rc.2，以保证结果可复现。
+Core 是纯 JavaScript，运行时只导入 Node 内建模块；Harness 适配器使用宿主 peer 包。CI 已配置构建一个 canonical `.tgz`，让 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 验证相同字节，包含 Cordis 容器、安装包安全、CLI 安装/卸载和合成数据。CLI 矩阵固定到 DeepSeek Harness Desktop 0.3.6 / Harness 0.1.1-rc.2。已配置矩阵不代表未发布候选版已经通过所有平台，实际证据以本轮交付为准。
 
 在有稳定原生 runner 和已交付 Harness 目标前，不宣称支持 Windows ARM 与 Linux ARM。安装包中不包含平台专属数据库内容或原生 addon。
 
@@ -29,11 +29,11 @@ bundle 运行时是纯 JavaScript，只使用 Node 内建能力。CI 只构建�
 需要 DeepSeek Harness 0.1.x Host（Node `^22.19.0` 或 `>=24`）。使用交付的 tarball，不需要 Python、shell 脚本或原生依赖构建：
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.2.1-maintenance.0.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.3.0-cordis.0.tgz
 dsh --profile web --dump-config
 ```
 
-配置中同时出现 `dsh-missher-memory` 和 `missher-memory` 即表示 bundle patch 已进入 profile。自动召回要求兼容的 DeepSeek Harness Desktop 提供 `missherBrain` Host 服务。重启 Harness 后，在“设置 → 超级记忆”完成首次绑定。
+配置中同时出现 `dsh-missher-memory` 和 `missher-memory` 即表示 bundle patch 已进入 profile，不代表运行时已激活。Harness Bundle 使用 `tools` 和 `dshHomePath`；独立 Brain 适配器等待 `missherBrain`，缺少它不再影响手动搜索。重启兼容的 Harness Host 后，在“设置 → 超级记忆”完成首次绑定，并确认当前 Agent 能实际调用 `memory_search`。
 
 全新 Windows/macOS 安装不需要 `vectors.db`：内置项目记忆在用户确认绑定后使用插件自有的 `state.db`。`vectors.db` 只是兼容旧记忆的可选只读来源。如果它不在默认的 `$HOME/.local/share/missher-memory/tencentdb/vectors.db`，启动 Harness 前可把 `MISSHER_TENCENTDB_DIR` 设为包含 `vectors.db` 的现有绝对目录。插件不会创建缺失目录或空数据库，也拒绝符号链接和逃逸路径。
 
@@ -88,14 +88,14 @@ dsh --profile web --dump-config
 发布前可运行：
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.2.1-maintenance.0.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.2.1-maintenance.0.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.3.0-cordis.0.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.3.0-cordis.0.tgz
 ```
 
 `native-smoke.mjs` 只使用合成数据库；传入 `--cli /absolute/path/to/dsh-cli.js` 时还会在临时 profile 中真实安装、组合并卸载 tarball。
 
 ## 2026-09-06 维护候选包
 
-本地候选版本为 `0.2.1-maintenance.0`，尚未发布。Host 必须有 `missherBrain`；原版 Harness 安装成功不代表插件激活。CLI 安装/卸载与真实运行时激活是不同证据。包 smoke 输出 `runtimeMode: cordis-with-synthetic-host-services` 和 `realHostActivationVerified: false`，并使用临时合成数据验证重装恢复，不代表真实 Desktop Brain 或界面验收。
+本地候选版本为 `0.3.0-cordis.0`，尚未发布。本次 Cordis 升级已解除必需 Brain 依赖；安装成功仍不代表当前 Agent 已发现并能调用工具。CLI 安装/卸载与真实运行时激活是不同证据。包 smoke 输出 `runtimeMode: cordis-with-synthetic-host-services` 和 `realHostActivationVerified: false`，并使用临时合成数据验证重装恢复，不代表真实 Desktop Brain 或界面验收。
 
 已审核记忆仍是历史数据，不能提供新授权。遗忘清除派生原子和胶囊，但保留 forgotten 候选作为审核历史。项目 JSON 导出暂不包含胶囊和 archived 原子，不是完整备份。

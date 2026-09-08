@@ -1,4 +1,4 @@
-# DeepSeek Harness Super Memory
+# Cordis Memory with DeepSeek Harness Integration
 
 English | [中文](README.zh.md)
 
@@ -6,11 +6,11 @@ English | [中文](README.zh.md)
 
 `dsh-missher-memory` is an independently installable DeepSeek Harness bundle for recovering architecture, decisions, progress, failed approaches, and next steps in long-running projects. The current package includes indexed recall and reversible duplicate consolidation. It neither changes Harness core nor copies or modifies an existing legacy database.
 
-For a fresh computer, follow [the Agent integration guide](AGENT.md). It separates operator installation from Agent tool use and explains the required `missherBrain` Host service.
+For a fresh computer, use [the Cordis service guide](CORDIS.md) for a reusable `dsh-missher-memory/core` plugin, or [the Harness Agent guide](AGENT.md) for the existing Bundle. Core provides `missherMemoryService` without Harness services. Brain is optional and only controls Harness automatic recall.
 
 ## Platform support
 
-The bundle is pure JavaScript and uses only Node built-ins at runtime. CI builds and verifies one canonical `.tgz`, then installs those exact bytes through the pinned Harness CLI on macOS Intel, macOS Apple Silicon, Windows x64, and Linux x64. The required checks include unit tests, type checks, package safety, real CLI install/uninstall, and the synthetic database lifecycle. The matrix is pinned to DeepSeek Harness Desktop 0.3.6 / Harness 0.1.1-rc.2 for reproducibility.
+The Core is pure JavaScript and imports only Node built-ins at runtime; the Harness adapter uses Host peer packages. CI is configured to build one canonical `.tgz` and verify the same bytes on macOS Intel, macOS Apple Silicon, Windows x64, and Linux x64. The checks cover Cordis containers, package safety, CLI install/uninstall, and synthetic data. The CLI matrix is pinned to DeepSeek Harness Desktop 0.3.6 / Harness 0.1.1-rc.2. A configured matrix is not evidence that an unpublished candidate passed every platform; consult the current delivery report.
 
 Windows ARM and Linux ARM are not claimed until stable native runners and a shipped Harness target are available. There is no platform-specific database payload or native addon inside the package.
 
@@ -29,11 +29,11 @@ Windows ARM and Linux ARM are not claimed until stable native runners and a ship
 The plugin requires a DeepSeek Harness 0.1.x Host with Node `^22.19.0` or `>=24`. The delivered tarball needs no Python, shell script, or native dependency build:
 
 ```sh
-dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.2.1-maintenance.0.tgz
+dsh plugin --profile web add /absolute/path/dsh-missher-memory-0.3.0-cordis.0.tgz
 dsh --profile web --dump-config
 ```
 
-The bundle patch is active when the configuration contains both `dsh-missher-memory` and `missher-memory`. Automatic recall requires the `missherBrain` Host service from a compatible DeepSeek Harness Desktop release. Restart Harness and finish the first binding in Settings → Super Memory.
+The configuration contains both `dsh-missher-memory` and `missher-memory` when the bundle patch has been composed into the profile; this does not prove runtime activation. The Harness Bundle uses `dshHomePath` and `tools`. The separate Brain adapter waits for `missherBrain`; manual search remains available without it. Restart a compatible Harness Host and finish the first binding in Settings → Super Memory, then verify that the current Agent can call `memory_search`.
 
 A fresh Windows or macOS install needs no `vectors.db`: after explicit project binding, built-in project memory uses the plugin-owned `state.db`. A `vectors.db` is only an optional, read-only source for legacy memory. If it is not at `$HOME/.local/share/missher-memory/tencentdb/vectors.db`, you may set `MISSHER_TENCENTDB_DIR` to the existing absolute directory that contains it before starting Harness. The plugin never creates a missing directory or empty database and rejects links and escaping paths.
 
@@ -88,16 +88,16 @@ Uninstall removes the bundle and profile patch but preserves `$DSH_HOME/missher-
 Before distribution, run:
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.2.1-maintenance.0.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.2.1-maintenance.0.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.3.0-cordis.0.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.3.0-cordis.0.tgz
 ```
 
 `native-smoke.mjs` uses synthetic data only. Passing `--cli /absolute/path/to/dsh-cli.js` additionally installs, composes, and removes the tarball in a temporary profile.
 
 ## 2026-09-06 maintenance candidate
 
-Local version `0.2.1-maintenance.0` is unpublished.
+Local version `0.3.0-cordis.0` is unpublished.
 
-The Host requires `missherBrain`; plain Harness installation does not activate the plugin without this service. CLI install/remove evidence is separate from runtime activation. The packaged smoke reports `runtimeMode: cordis-with-synthetic-host-services` and `realHostActivationVerified: false`, and checks reinstall restoration using temporary synthetic data. No real Desktop Brain or UI acceptance is claimed by this smoke.
+The Cordis upgrade removes the mandatory Brain dependency. The earlier 117-test maintenance evidence below predates this upgrade; see CORDIS.md and the current delivery report for fresh verification. CLI install/remove evidence is separate from runtime activation. The packaged smoke reports `runtimeMode: cordis-with-synthetic-host-services` and `realHostActivationVerified: false`, and checks reinstall restoration using temporary synthetic data. No real Desktop Brain or UI acceptance is claimed by this smoke.
 
 Reviewed memory remains untrusted historical data, never new authorization. Forgetting removes derived atoms and capsules, while retaining the forgotten candidate for review history. Project JSON export currently excludes capsules and archived atoms and is not a full backup.

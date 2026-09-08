@@ -25,6 +25,7 @@ describe('published bundle contract', () => {
       'lib',
       'cordis.patch.yml',
       'AGENT.md',
+      'CORDIS.md',
       'README.md',
       'README.zh.md',
       'SECURITY.md',

@@ -1,9 +1,9 @@
 {
   "name": "dsh-missher-memory",
-  "version": "0.2.1-maintenance.0",
+  "version": "0.3.0-cordis.0",
   "private": false,
   "type": "module",
-  "description": "Project-scoped reviewed memory for DeepSeek Harness",
+  "description": "Project-scoped reviewed memory for Cordis with a DeepSeek Harness adapter",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -16,6 +16,10 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "exports": {
+    "./core": {
+      "types": "./lib/core.d.ts",
+      "import": "./lib/core.js"
+    },
     ".": {
       "types": "./lib/index.d.ts",
       "import": "./lib/index.js"
@@ -37,6 +41,7 @@
     "lib",
     "cordis.patch.yml",
     "AGENT.md",
+    "CORDIS.md",
     "README.md",
     "README.zh.md",
     "SECURITY.md",
@@ -67,7 +72,8 @@
     "test:unit": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",
     "verify:package": "node scripts/verify-package.mjs",
-    "smoke:package": "node scripts/native-smoke.mjs"
+    "smoke:package": "node scripts/native-smoke.mjs",
+    "smoke:cordis": "node scripts/cordis-smoke.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
@@ -86,6 +92,7 @@
     "@types/node": "^22.19.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
+    "cordis": "4.0.0-rc.9",
     "jsdom": "^26.1.0",
     "lightningcss": "^1.30.1",
     "react": "^18.2.0",
@@ -113,18 +120,46 @@
     "zod": ">=4.0.0 <5.0.0"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/cordis": { "optional": true },
-    "@deepseek-ai/dsh-agent": { "optional": true },
-    "@deepseek-ai/dsh-agent-loop": { "optional": true },
-    "@deepseek-ai/dsh-api-remotes": { "optional": true },
-    "@deepseek-ai/dsh-client-locale": { "optional": true },
-    "@deepseek-ai/dsh-client-runtime": { "optional": true },
-    "@deepseek-ai/dsh-client-ui-settings": { "optional": true },
-    "@deepseek-ai/dsh-client-ui-slots": { "optional": true },
-    "@deepseek-ai/dsh-llm": { "optional": true },
-    "@deepseek-ai/dsh-session": { "optional": true },
-    "@deepseek-ai/dsh-tools": { "optional": true },
-    "@deepseek-ai/dsh-typert-protocol": { "optional": true },
-    "@deepseek-ai/schemastery": { "optional": true }
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-agent": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-agent-loop": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-api-remotes": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-locale": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-runtime": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-settings": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-slots": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-llm": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-session": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-typert-protocol": {
+      "optional": true
+    },
+    "react": { "optional": true },
+    "zod": { "optional": true },
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    }
   }
 }

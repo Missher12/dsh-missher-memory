@@ -10,6 +10,9 @@ const REQUIRED_FILES = new Set([
   'package/package.json',
   'package/cordis.patch.yml',
   'package/AGENT.md',
+  'package/CORDIS.md',
+  'package/lib/core.js',
+  'package/lib/core.d.ts',
   'package/README.md',
   'package/README.zh.md',
   'package/README.i18n.yaml',
@@ -27,8 +30,8 @@ const REQUIRED_FILES = new Set([
   'package/lib/workers/sqlite-reader.worker.js',
   'package/lib/workers/sqlite-reader.worker.d.ts',
 ])
-const RUNTIME_CHUNK = /^package\/lib\/remote-contract-[A-Za-z0-9_-]+\.js$/u
-const DECLARATION_CHUNK = /^package\/lib\/remote-contract-[A-Za-z0-9_-]+\.d\.ts$/u
+const RUNTIME_CHUNK = /^package\/lib\/(?:remote-contract|core)-[A-Za-z0-9_-]+\.js$/u
+const DECLARATION_CHUNK = /^package\/lib\/(?:remote-contract|core)-[A-Za-z0-9_-]+\.d\.ts$/u
 const TEXT_FILE = /(?:\.d\.ts|\.js|\.json|\.map|\.md|\.ya?ml|\/LICENSE)$/u
 const FORBIDDEN_FILE = /(?:^|\/)(?:src|tests?|scripts?|state|backups?)(?:\/|\.|$)|(?:^|\/)(?:\.env(?:\.|$)|audit(?:\.|$))|\.(?:db|sqlite(?:3)?|log|pem|key)$/iu
 const PRIVATE_KEY_VALUE = /-----BEGIN [^-\r\n]*PRIVATE KEY-----[\r\n]+[A-Za-z0-9+/=\r\n]{64,}/u
@@ -55,8 +58,11 @@ export async function readVerifiedPackage(inputPath) {
   const expanded = gunzipSync(archive, { maxOutputLength: MAX_EXPANDED_BYTES })
   const entries = readTar(expanded)
   const files = [...entries.keys()].sort()
-  if (files.filter(file => RUNTIME_CHUNK.test(file)).length !== 1) throw new Error('runtime_chunk_invalid')
-  if (files.filter(file => DECLARATION_CHUNK.test(file)).length !== 1) throw new Error('declaration_chunk_invalid')
+  for (const prefix of ['remote-contract', 'core']) {
+    const chunks = files.filter(file => file.startsWith(`package/lib/${prefix}-`))
+    if (chunks.filter(file => RUNTIME_CHUNK.test(file)).length !== 1) throw new Error('runtime_chunk_invalid')
+    if (chunks.filter(file => DECLARATION_CHUNK.test(file)).length !== 1) throw new Error('declaration_chunk_invalid')
+  }
   for (const required of REQUIRED_FILES) {
     if (!entries.has(required)) throw new Error(`required_file_missing:${required}`)
   }
@@ -189,10 +195,12 @@ function assertManifest(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('package_json_invalid')
   if (
     value.name !== 'dsh-missher-memory'
-    || value.version !== '0.2.1-maintenance.0'
+    || value.version !== '0.3.0-cordis.0'
     || value.type !== 'module'
     || value.main !== 'lib/index.js'
     || value.types !== 'lib/index.d.ts'
+    || value.exports?.['./core']?.import !== './lib/core.js'
+    || value.exports?.['./core']?.types !== './lib/core.d.ts'
     || value.dsh?.bundle?.patch !== './cordis.patch.yml'
     || value.dsh?.client?.platform !== 'web'
     || value.scripts?.prepare !== undefined

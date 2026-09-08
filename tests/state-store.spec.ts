@@ -165,13 +165,17 @@ describe('explicit project binding state', () => {
     })
   })
 
-  it('detects a replaced local key and tampered ciphertext without leaking values', async () => {
+  it('preserves a missing key and detects replaced keys and tampered ciphertext without leaking values', async () => {
     const { cwd, stateDirectory } = await fixture()
     const store = new StateStore({ stateDirectory })
     await store.bindProject({ cwd, sessionKeys: ['session-alpha'] })
     const keyPath = join(stateDirectory, 'key.bin')
     const originalKeyPath = join(stateDirectory, 'key.original')
     await rename(keyPath, originalKeyPath)
+    const stateBefore = await readFile(join(stateDirectory, 'state.db'))
+    await expect(store.bindProject({ cwd, sessionKeys: [] })).resolves.toEqual({ status: 'corrupt' })
+    await expect(lstat(keyPath)).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await readFile(join(stateDirectory, 'state.db'))).toEqual(stateBefore)
     await writeFile(keyPath, Buffer.alloc(32, 4), { mode: 0o600 })
 
     await expect(store.lookupProject(cwd)).resolves.toEqual({ status: 'corrupt' })

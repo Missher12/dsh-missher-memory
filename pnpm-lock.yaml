@@ -60,6 +60,9 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.1
         version: 18.3.7(@types/react@18.3.31)
+      cordis:
+        specifier: 4.0.0-rc.9
+        version: 4.0.0-rc.9
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0
@@ -1114,6 +1117,21 @@ packages:
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+
+  cordis@4.0.0-rc.9:
+    resolution: {integrity: sha512-Y18SoewBvJ0eTZK7lHSQ5xl5YT1OWwoqFI92UrtpSAZyjUcW7cIEAOgOBVFp7PtO605vx6gBWdiOVaxY6UmSGw==}
+    hasBin: true
+    peerDependencies:
+      '@cordisjs/plugin-include': ^1.0.5
+      '@cordisjs/plugin-loader': ^1.0.0-rc.6
+    peerDependenciesMeta:
+      '@cordisjs/plugin-include':
+        optional: true
+      '@cordisjs/plugin-loader':
+        optional: true
+
+  cosmokit@1.8.1:
+    resolution: {integrity: sha512-PDBv4l90xZKrUsZ0vtoycgZpO/j4iFsqJXrAxsyBDsnQRI7ZMJXIjgDJsKNjd5L8jnVnnlrDCdhkFbTncgCVjQ==}
 
   cssstyle@4.6.0:
     resolution: {integrity: sha512-2z+rWdzbbSZv6/rhtvzvqeZQHrBaqgogqt85sqFNbabZOuFbCVFb8kPeEtZjiKkbrm395irpNKiYeFeLiQnFPg==}
@@ -2911,6 +2929,13 @@ snapshots:
   commander@8.3.0: {}
 
   convert-source-map@2.0.0: {}
+
+  cordis@4.0.0-rc.9:
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      cosmokit: 1.8.1
+
+  cosmokit@1.8.1: {}
 
   cssstyle@4.6.0:
     dependencies:

@@ -82,6 +82,15 @@ export interface ApprovedMemory extends CandidateDraft {
   updatedAt: string
 }
 
+/** Reviewed provenance record; archived sources are available only by explicit reference. */
+export interface ReviewedMemoryRecord extends CandidateDraft {
+  reference: string
+  sourceReferences: string[]
+  lifecycle: 'active' | 'archived' | 'superseded'
+  source: 'reviewed memory' | 'reviewed memory capsule'
+  recordedAt: string
+}
+
 export interface ConsolidationAtom extends CandidateDraft {
   memoryId: string
   projectKey: string
@@ -394,6 +403,7 @@ export class StateStore {
     if (opened.status !== 'ready') return { status: opened.status }
     const { database, key } = opened
     try {
+      database.exec('BEGIN IMMEDIATE')
       if (database.prepare('SELECT 1 FROM projects WHERE project_key = ?').get(projectKey) === undefined) {
         return { status: 'unknown-project' }
       }
@@ -402,7 +412,6 @@ export class StateStore {
         opaqueId(key, 'memcand', `${projectKey}\u0000${sourceHash}\u0000${draft.scope}\u0000${draft.kind}\u0000${draft.content}`),
       )
       const timestamp = now()
-      database.exec('BEGIN IMMEDIATE')
       const insert = database.prepare(`
         INSERT OR IGNORE INTO candidates
           (candidate_id, project_key, scope, kind, content, source_session_hash, status, pinned, created_at, updated_at)
@@ -410,8 +419,8 @@ export class StateStore {
       `)
       normalized.forEach((draft, index) => {
         const candidateId = candidateIds[index]!
-        insert.run(candidateId, projectKey, draft.scope, draft.kind, draft.content, sourceHash, timestamp, timestamp)
-        writeAudit(database, key, projectKey, 'candidate-created', candidateId)
+        const result = insert.run(candidateId, projectKey, draft.scope, draft.kind, draft.content, sourceHash, timestamp, timestamp)
+        if (result.changes > 0) writeAudit(database, key, projectKey, 'candidate-created', candidateId)
       })
       database.exec('COMMIT')
       return { status: 'created', candidateIds }
@@ -480,6 +489,7 @@ export class StateStore {
   async approveCandidate(
     candidateId: string,
     patch: Partial<CandidateDraft>,
+    expectedProjectKey?: string,
   ): Promise<
     | { status: 'approved'; memoryId: string }
     | { status: 'unknown-candidate' | 'not-pending' | 'rejected-sensitive' | 'unavailable' }
@@ -489,12 +499,13 @@ export class StateStore {
     if (opened.status !== 'ready') return { status: 'unavailable' }
     const { database, key } = opened
     try {
+      database.exec('BEGIN IMMEDIATE')
       const row = database
         .prepare('SELECT project_key, scope, kind, content, status, pinned FROM candidates WHERE candidate_id = ?')
         .get(candidateId) as
         | { project_key: string; scope: CandidateScope; kind: CandidateKind; content: string; status: string; pinned: number }
         | undefined
-      if (row === undefined) return { status: 'unknown-candidate' }
+      if (row === undefined || (expectedProjectKey !== undefined && row.project_key !== expectedProjectKey)) return { status: 'unknown-candidate' }
       if (row.status !== 'pending') return { status: 'not-pending' }
       const content = patch.content === undefined ? row.content : truncateUtf8(patch.content.trim(), 2_000).text
       if (content.length === 0 || !inspectPrivacy(content).safe) return { status: 'rejected-sensitive' }
@@ -502,7 +513,6 @@ export class StateStore {
       const kind = patch.kind ?? row.kind
       const memoryId = opaqueId(key, 'approved', candidateId)
       const timestamp = now()
-      database.exec('BEGIN IMMEDIATE')
       database
         .prepare(`
           INSERT INTO approved_memories
@@ -571,16 +581,17 @@ export class StateStore {
   /** Forgets a candidate and removes approved material derived from it. */
   async forgetCandidate(
     candidateId: string,
+    expectedProjectKey?: string,
   ): Promise<{ status: 'forgotten' | 'unknown-candidate' | 'unavailable' }> {
     const opened = await this.#openExistingForMutation()
     if (opened.status !== 'ready') return { status: 'unavailable' }
     const { database, key } = opened
     try {
+      database.exec('BEGIN IMMEDIATE')
       const row = database.prepare('SELECT project_key FROM candidates WHERE candidate_id = ?').get(candidateId) as
         | { project_key: string }
         | undefined
-      if (row === undefined) return { status: 'unknown-candidate' }
-      database.exec('BEGIN IMMEDIATE')
+      if (row === undefined || (expectedProjectKey !== undefined && row.project_key !== expectedProjectKey)) return { status: 'unknown-candidate' }
       // Invalidate every derivative, including superseded capsules. Restore surviving
       // atoms in the same transaction before deleting the forgotten source.
       const affected = database.prepare(`
@@ -715,6 +726,47 @@ export class StateStore {
       return rows.map(approvedFromRow)
     } catch {
       return []
+    } finally {
+      database.close()
+    }
+  }
+
+  /** Reads one scoped reviewed record and its provenance, including archived capsule sources. */
+  async getReviewedMemory(input: { projectKey: string; scope: CandidateScope; reference: string }): Promise<
+    { status: 'ready'; memory: ReviewedMemoryRecord } | { status: 'not-found' | 'unavailable' }
+  > {
+    const opened = await this.#openReadOnly()
+    if (opened.status !== 'ready') return { status: 'unavailable' }
+    const { database } = opened
+    try {
+      const atom = database.prepare(`
+        SELECT content, kind, scope, sources_json, lifecycle_state, updated_at FROM approved_memories
+        WHERE memory_id = ? AND scope = ?
+          AND ((scope = 'project' AND project_key = ?) OR (scope = 'personal' AND project_key IS NULL))
+      `).get(input.reference, input.scope, input.projectKey) as {
+        content: string; kind: CandidateKind; scope: CandidateScope; sources_json: string;
+        lifecycle_state: 'active' | 'archived'; updated_at: string;
+      } | undefined
+      if (atom !== undefined) return { status: 'ready', memory: {
+        reference: input.reference, content: atom.content, kind: atom.kind, scope: atom.scope,
+        sourceReferences: parseStringArray(atom.sources_json), lifecycle: atom.lifecycle_state,
+        source: 'reviewed memory', recordedAt: atom.updated_at,
+      } }
+      const capsule = database.prepare(`
+        SELECT content, kind, scope, source_ids_json, status, updated_at FROM memory_capsules
+        WHERE capsule_id = ? AND project_key = ? AND scope = ?
+      `).get(input.reference, input.projectKey, input.scope) as {
+        content: string; kind: CandidateKind; scope: CandidateScope; source_ids_json: string;
+        status: 'active' | 'superseded'; updated_at: string;
+      } | undefined
+      if (capsule === undefined) return { status: 'not-found' }
+      return { status: 'ready', memory: {
+        reference: input.reference, content: capsule.content, kind: capsule.kind, scope: capsule.scope,
+        sourceReferences: parseStringArray(capsule.source_ids_json), lifecycle: capsule.status,
+        source: 'reviewed memory capsule', recordedAt: capsule.updated_at,
+      } }
+    } catch {
+      return { status: 'unavailable' }
     } finally {
       database.close()
     }
@@ -1117,8 +1169,10 @@ export class StateStore {
     const state = await this.#inspectStateDatabase()
     if (state.status === 'unsafe-state') return { status: 'unsafe-state' }
     if (state.status === 'unavailable') return { status: 'unavailable' }
-    const key = await loadOrCreateLocalKey(this.#stateDirectory)
-    if (key.status !== 'ready') return { status: key.status === 'missing' ? 'unavailable' : key.status }
+    const key = state.status === 'present'
+      ? await loadLocalKey(this.#stateDirectory)
+      : await loadOrCreateLocalKey(this.#stateDirectory)
+    if (key.status !== 'ready') return { status: key.status === 'missing' ? 'corrupt' : key.status }
     let database: DatabaseSync | undefined
     try {
       database = new DatabaseSync(this.#databasePath, { allowExtension: false, timeout: 250 })
@@ -1210,6 +1264,19 @@ export class StateStore {
 }
 
 function initializeOrValidateSchema(database: DatabaseSync, key: Uint8Array): 'ready' | 'corrupt' | 'incompatible-state' {
+  // Serialize version detection and all DDL, including first initialization and FTS repair.
+  database.exec('BEGIN IMMEDIATE')
+  try {
+    const result = initializeSchemaInTransaction(database, key)
+    database.exec(result === 'ready' ? 'COMMIT' : 'ROLLBACK')
+    return result
+  } catch (error) {
+    rollback(database)
+    throw error
+  }
+}
+
+function initializeSchemaInTransaction(database: DatabaseSync, key: Uint8Array): 'ready' | 'corrupt' | 'incompatible-state' {
   const version = schemaVersion(database)
   if (version > STATE_SCHEMA_VERSION) return 'incompatible-state'
   if (version === STATE_SCHEMA_VERSION) {
@@ -1321,7 +1388,6 @@ function migrateSchemaOne(
   if (!validateKey(database, key)) return 'corrupt'
   try {
     database.exec(`
-      BEGIN IMMEDIATE;
       ALTER TABLE approved_memories
         ADD COLUMN lifecycle_state TEXT NOT NULL DEFAULT 'active'
         CHECK (lifecycle_state IN ('active', 'archived'));
@@ -1351,10 +1417,9 @@ function migrateSchemaOne(
       );
     `)
     ensureFtsSchema(database)
-    database.exec('PRAGMA user_version = 2; COMMIT;')
+    database.exec('PRAGMA user_version = 2;')
     return 'ready'
   } catch {
-    rollback(database)
     return 'incompatible-state'
   }
 }

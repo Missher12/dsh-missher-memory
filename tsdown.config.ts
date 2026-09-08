@@ -43,6 +43,7 @@ function hostConfig(): UserConfig {
   return {
     entry: {
       index: 'src/index.ts',
+      core: 'src/core.ts',
       'typert.host': 'src/typert.host.ts',
       'typert.remote-client': 'src/typert.remote-client.ts',
       'workers/sqlite-reader.worker': 'src/workers/sqlite-reader.worker.ts',

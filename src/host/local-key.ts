@@ -1,5 +1,5 @@
 import { constants } from 'node:fs'
-import { chmod, lstat, mkdir, open, readFile } from 'node:fs/promises'
+import { chmod, link, lstat, mkdir, open, readFile, unlink } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto'
 
@@ -58,16 +58,22 @@ export async function loadOrCreateLocalKey(stateDirectory: string): Promise<Loca
     }
     await chmod(stateDirectory, 0o700)
     const key = randomBytes(KEY_BYTES)
+    const temporaryPath = join(stateDirectory, `.key-${randomBytes(16).toString('hex')}.tmp`)
     let handle
     try {
-      handle = await open(localKeyPath(stateDirectory), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, 0o600)
+      handle = await open(temporaryPath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, 0o600)
       await handle.writeFile(key)
       await handle.sync()
+      await handle.close()
+      handle = undefined
+      // Publish a complete key atomically without replacing another process's key.
+      await link(temporaryPath, localKeyPath(stateDirectory))
     } catch (error) {
       if (isExists(error)) return loadLocalKey(stateDirectory)
       return { status: 'unavailable' }
     } finally {
       await handle?.close()
+      await unlink(temporaryPath).catch(() => {})
     }
     await chmod(localKeyPath(stateDirectory), 0o600)
     return { status: 'ready', key }

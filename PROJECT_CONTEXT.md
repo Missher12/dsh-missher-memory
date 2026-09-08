@@ -1,76 +1,54 @@
-# DeepSeek Harness 超级记忆插件项目上下文
+# Cordis 长期记忆插件项目上下文
 
-## 项目目标
+## 当前摘要（2026-09-08）
 
-`dsh-missher-memory` 是独立安装的 DeepSeek Harness Cordis bundle。它面向跨会话、跨阶段的超长项目，在不复制或修改现有记忆数据库的前提下，提供按项目隔离的只读检索、候选记忆审核和可选自动召回。
+独立仓库 `Missher12/dsh-missher-memory`；本地候选 `0.3.0-cordis.0`，schema 2。用户已授权按 Cordis 方向实现，MCP/CLI/HTTP 方案撤回。Core 与 Harness、Brain 适配已分离；本节取代此前“整个插件必需 Brain”的描述。
 
-## 技术架构
+工作树为 `.worktrees/memory-maintenance`，分支 `maintenance/memory-audit-20260906`。本轮基线完整 SHA 为 `887f2ca838452b76219827fdf11d4e1e089d73b1`；最终 SHA 与安装包校验和见 `dist/cordis-evidence/source-revision.json` 和 `package-verification.json`。仅本地提交和打包，不 push/tag/Release。
 
-- Host 插件负责项目绑定、只读搜索、候选记忆生命周期、设置和失败开放。
-- Client 插件使用 Harness 原生 `settings.section` 展示连接、项目、召回、候选记忆和来源。
-- SQLite Worker 使用 Node 内建 `node:sqlite`，通过固定预编译 SQL 只读查询外部 `vectors.db`；超时后终止并重建 Worker。
-- 插件自有 `state.db` 只保存不可逆项目键、项目 basename、短 hash、设置、候选记忆和审核后的记忆；不保存绝对 cwd。
-- Bundle 通过 `dsh.bundle.patch` 和 `cordis.patch.yml` 安装，不修改 Harness 核心源码。
+## 目标与边界
 
-## 核心安全不变量
+在兼容的 Cordis 宿主中保存、查找和恢复按项目隔离的已审核记忆，降低跨会话重复解释。保留已有 Harness 安装方式、设置页和数据。Memory 负责事实记忆，Evolution 负责规则晋升。
 
-1. `vectors.db` 始终只读，绝不复制、迁移、打包或写入。
-2. 未显式完成项目绑定且未开启“候选记忆捕获”时，不创建 `state.db`、pending candidate 或任何插件状态文件。
-3. 只读搜索不得产生插件状态；自动召回保持独立开关，新绑定项目默认开启，已有项目设置不被迁移。
-4. cwd 仅作为绑定候选；用户确认的 binding 才是长期项目身份。
-5. 项目记忆和个人偏好分层，未绑定项目不能检索或注入项目内容。
-6. 缺失外部数据库显示“未连接（可选）”，内置项目记忆仍显示已就绪，不会静默创建空数据库。
-7. 凭据、私钥、敏感路径、原始工具输出和其他隐私内容默认拒绝记录。
-8. 插件错误、数据库错误和超时均失败开放，不阻止 Harness 启动或会话。
+Core 不自动读取其他 Agent 的会话；宿主负责把可信项目上下文映射到工具。记忆文本不构成系统指令、用户授权或写入批准。不承诺非 Cordis Agent 直接安装。
 
-## 分阶段范围
+## 架构和入口
 
-- v1：只读全文搜索、显式项目绑定、来源与时间展示。
-- v2：默认关闭的候选捕获、候选箱审核、编辑、合并、固定、遗忘、项目删除和导出。
-- v3：独立默认关闭的自动召回、顶层会话限制和严格注入预算。
+- `src/core.ts` / 包子入口 `dsh-missher-memory/core`：仅使用结构化 Cordis context，提供 `missherMemoryService`；运行时无 Harness/Cordis npm 包 import。
+- `src/host/memory-service.ts`：项目 facade 的 status/search/get/propose，可信操作者 bind/admin，服务内队列和关闭流程。
+- `src/index.ts`：保留 Bundle 默认入口，用 `dshHomePath` 组合 Core 与 Harness adapter。
+- `src/host/harness-adapter.ts`：等 Core/tools，注册原来的 memory_search、session 捕获、RPC、设置页后端与整理调度。
+- `src/host/brain-adapter.ts`：单独等待 Brain，注册/注销 provider；Brain 缺失不影响手动搜索。
+- `src/host/project-search.ts`：通用服务与 Harness 工具共享检索逻辑；已绑定但无旧来源/无匹配内容时返回 ready 空结果。
+- `src/host/state-store.ts`：schema 2、自有 FTS、候选/审核/胶囊；新增定向来源读取，审核/遗忘可在事务内核验项目。
+- `src/workers/`：可终止的外部 SQLite 只读 Worker。自有 SQLite 查询尚未迁入 Worker。
+- `src/client/`、`src/remote.ts`：保留 Harness 设置页与 RPC；已有 `missherMemory` 名称仍归 RPC，不与新服务冲突。
 
-## 文件结构
+## 数据与安全不变量
 
-- `src/host/`：Host 插件、项目绑定、搜索、状态、候选和召回。
-- `src/client/`：设置页 section、样式和本地化。
-- `src/remote/`：Host/Client RPC 接口。
-- `src/workers/`：只读 SQLite Worker。
-- `tests/`：安全、隔离、生命周期、打包和失败开放测试。
-- `scripts/`：安装包验证和 packaged smoke。
-- `docs/`：设计、计划、安装/卸载和数据保留说明。
+1. Core 只用操作者显式配置的绝对 stateDirectory。Harness 沿用 `$DSH_HOME/missher-memory/`，不会自动发现、复制或迁移真实记忆。
+2. 空状态加载、诊断、检索及未绑定 propose 不产生状态文件。明确绑定后才初始化；已有状态的 schema/FTS 维护可能写盘。
+3. 项目 cwd 来自可信宿主；每个 facade 固定上下文。跨项目 get/approve/forget 拒绝；个人偏好访问在 Core 中默认关闭。
+4. propose 仅创建 pending；admin 不能直接映射成模型自批工具。完全相同的项目、sourceId 和标准化内容去重，重试不复活已遗忘记录。
+5. key.bin 完整写入后原子发布，避免并发读到半个密钥。初始化/迁移由 SQLite 事务串行化，审核状态检查与写入处于同一事务。
+6. sources、时间、lifecycle 和引用可追踪。归档来源可显式 get，但不进入默认搜索；隐私过滤和体积限制继续生效。
+7. 外部 vectors.db 始终可选、只读，不作为测试素材。所有测试使用临时合成数据和隔离状态。
+8. 卸载释放资源并保留状态；旧 Core facade 拒绝新调用。错误失败开放，不授权自动修复、删除或绕过 Brain 注入。
 
-## 当前进度
+## 本轮验证与限制
 
-- 已完成 Harness 插件协议、上下文流、项目身份来源和真实 SQLite schema 的只读检查。
-- 已确认外部数据库无显式 project id，需要插件自有的用户确认 binding 才能安全隔离。
-- 已批准方案 A：单一预构建 DSH bundle，Node 内建 SQLite Worker，无 Python/shell 运行时。
-- v1 已完成：只读搜索、显式项目绑定、来源/时间/引用展示和跨项目隔离。
-- v2 已完成：新绑定项目默认开启的候选捕获、审核、编辑、合并、固定、遗忘、导出和项目删除。
-- v3 已完成：新绑定项目默认开启的独立自动召回、顶层会话限制、来源标注和注入预算。
-- Harness 原生设置页、Host/Client RPC、独立安装包验证和 packaged smoke 已实现；交付阶段只保留最终复验与成品摘要。
-- 0.1.2 将插件自有的内置记忆与可选旧 `vectors.db` 状态拆开展示，使新设备不再被误报为记忆未配置。
-- 0.1.3 将设置页的平台与数据库实现说明改为面向用户的产品文案，并以自动化测试阻止平台名和内部数据库文件名再次进入界面。
-- 0.2.0 状态 schema 2 已加入原子 v1 迁移、原子生命周期、可逆胶囊和维护记录表；既有正文、绑定密文和项目身份在迁移中逐字节保持。
-- 为降低迁移风险，低频审核/设置事务继续使用已验证的同步存储 API；旧来源检索在可终止 Worker 中；2026-09-06 审计确认自有 FTS 和固化读取仍在主线程同步执行，待评审迁移到 Worker。
-- 0.2.0 已审核记忆改用插件自有 FTS5，中英混合 50,000 条回归满足 Intel p95 150ms 门槛；旧 TencentDB Reader 代码随包交付，但数据库永不打包或写入。
-- 自动整理默认开启，只处理至少七天、未固定、同项目同类型的完全重复已审核原子；胶囊保留来源 ID 和校验和，回滚会恢复全部来源及索引。
-- Memory 不再注册独立 pre-step 注入器；它通过 Desktop `missherBrain` 服务贡献 reviewed-memory、memory-capsule 和 legacy-memory，由 Brain 统一仲裁、去重和显示。
-- 独立公开仓库只生成一个 canonical 通用 `.tgz`；必需 CI 矩阵在 macOS Intel、macOS Apple Silicon、Windows x64 和 Linux x64 上下载相同字节，并针对固定的 Desktop 0.3.6 / Harness 0.1.1-rc.2 CLI 执行测试、包安全验证和真实安装/卸载 smoke。
+当前回归为 29 文件 / 121 测试通过，并通过 typecheck/build。包在临时目录无 Harness 依赖导入，两种真实 Cordis 容器均完成生命周期；四个独立进程只产生一次审核。原版 Harness CLI 0.1.1-rc.2 完成临时安装、配置组合、卸载、重装和合成数据恢复。最终日志归档在 `dist/cordis-evidence/`。
 
-## 已知问题与风险
+已实测 darwin-x64，Node 25.6.0；包 Core 另在 Node 22.19.0 验证。运行时版本为上游 cordis 4.0.0-rc.9 与 @deepseek-ai/cordis 4.0.1。上游 rc.9 类型声明的无扩展名 re-export 与 TS NodeNext 不兼容；JS 运行时与 Core 独立类型入口分别核验。
 
-- 旧数据库没有可信 project id，首次绑定需要用户把外部 session keys 显式归入项目；插件不得自动推断。
-- `node:sqlite` 查询是同步 API，必须放在 Worker 中才能实现硬超时。
-- 外部数据库目录中发现过明文凭据风险；插件不会读取相关脚本，凭据需要在源系统侧轮换并改为环境变量。
-- 2026-09-06 已定位独立公开仓库并新建本地 clone；维护使用 `.worktrees/memory-maintenance` / `maintenance/memory-audit-20260906`，基线 `62b39596e17bad14787c6cf4f59d27962076a51b`。
-- 旧数据库来源必须由用户首次人工归类；错误选择来源会造成项目误绑定，插件不会用启发式自动纠正。
-- 候选和批准正文以明文保存在权限受限的插件 `state.db`；本机磁盘加密、导出文件保护和最终删除仍由用户负责。
-- Windows ARM 与 Linux ARM 当前没有稳定原生验收 runner 和已交付 Desktop 目标，因此保持未声明支持；插件运行时不含原生 addon，未来可通过扩展 CI 矩阵验证。
+真实 Agent 模型调用、Desktop Brain 注入和设置页 UI 尚未验收。Windows/ARM/Linux 本轮未运行原生验收；CI 新增了 Cordis smoke，但未触发远端运行。
 
-## 2026-09-06 维护盘点
+## 后续工作
 
-当前远端基线为 0.2.0，历史 0.1.0 已过时。详细盘点、五项 Bug 修复、宿主依赖及待确认方案见 `docs/maintenance-audit-2026-09-06.zh.md`；交接与最终测试见 `HANDOVER.md`。新电脑上的安装者和 Agent 接入流程见 `AGENT.md`，该文件随包交付。
+- 明确过期、纠正链和冲突的数据语义后设计增量 schema。
+- 完整一致备份与恢复；现有项目 JSON 导出不是完整备份，换机须显式重绑路径。
+- forgotten 候选仍保留正文，不宣称彻底擦除。
+- 自有 FTS Worker 和相关性评测；searchByteBudget 只计算正文，Brain 的贡献预算另外计算序列化体积。
+- 新宿主必须验证服务加载、工具映射和当前 Agent 实际调用，不能靠 MD 或安装成功判断。
 
-实际运行必须有 `missherBrain` 服务；CLI 安装成功不能证明原版 Harness 激活。smoke 的 Brain 服务为模拟实现。本轮仅维护独立插件，不修改 Desktop/Evolution，不推送或发布。
-
-已修复：遗忘清理派生胶囊并恢复幸存来源、显式搜索包含 active 胶囊、provider 合并后遵守项目召回预算、整理仅处理正文完全一致的原子。项目删除同时清理派生个人记忆的 FTS 索引。schema 仍为 2，没有新增数据结构。既有胶囊不自动重写；完整导出/恢复、纠正/过期/冲突和原版 Harness 降级支持仍为待确认设计。
+接入文档：`CORDIS.md` / `AGENT.md`。此前五项 Bug 修复记录见 `docs/maintenance-audit-2026-09-06.zh.md`；Cordis 方案与阶段划分见 `docs/portable-agent-proposal-2026-09-08.zh.md`。交接见 `HANDOVER.md`。

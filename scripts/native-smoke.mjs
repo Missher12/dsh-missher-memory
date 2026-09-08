@@ -3,6 +3,7 @@
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
+import { Worker } from 'node:worker_threads'
 import { createRequire } from 'node:module'
 import {
   access,
@@ -41,7 +42,11 @@ async function main() {
     await mounted.core.noteCwd(synthetic.projectA)
     const initial = await mounted.remote.snapshot()
     if (initial.database.status !== 'ready' || initial.projectCandidate === null || initial.sources.length === 0) {
-      throw new Error('initial_snapshot_invalid')
+      if (process.env.DSH_SMOKE_DEBUG === '1') {
+        const probe = await probeWorker(join(installed.pluginDirectory, 'lib', 'workers', 'sqlite-reader.worker.js'), synthetic.databasePath)
+        process.stderr.write(JSON.stringify({ workerProbe: probe }) + '\n')
+      }
+      throw new Error(`initial_snapshot_invalid:${initial.database.status}:sources=${initial.sources.length}:candidate=${initial.projectCandidate !== null}`)
     }
     if (await exists(zeroState)) throw new Error('zero_state_created')
 
@@ -93,14 +98,17 @@ async function main() {
     mounted.ctx.emit('session/disposed', recallSession)
     if (!brainRecall) throw new Error('brain_recall_missing')
 
+    // A separate short-deadline instance tests termination, independently of normal cold-start discovery.
+    const deadline = await mount(await loadRuntime(installed.pluginEntry), zeroHome, synthetic.databaseRoot, 100)
     const lock = new DatabaseSync(synthetic.databasePath, { timeout: 250 })
     lock.exec('BEGIN EXCLUSIVE')
     let timeoutSearch
     try {
-      timeoutSearch = await executeSearch(mounted.tool, synthetic.projectA, 'architecture')
+      timeoutSearch = await executeSearch(deadline.tool, synthetic.projectA, 'architecture')
     } finally {
       lock.exec('ROLLBACK')
       lock.close()
+      await deadline.dispose()
     }
     if (timeoutSearch.status !== 'timeout') throw new Error('timeout_not_enforced')
 
@@ -195,7 +203,7 @@ async function main() {
 function parseArgs(args) {
   const options = {
     platform: 'current',
-    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.2.1-maintenance.0.tgz'),
+    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.3.0-cordis.0.tgz'),
     cli: undefined,
     profile: 'memory-smoke',
   }
@@ -286,7 +294,7 @@ async function loadRuntime(pluginEntry) {
   return { Context, plugin }
 }
 
-async function mount(runtime, dshHome, databaseRoot) {
+async function mount(runtime, dshHome, databaseRoot, searchTimeoutMs = 1_500) {
   const tools = new Map()
   const ctx = new runtime.Context()
   let brainProvider
@@ -309,7 +317,9 @@ async function mount(runtime, dshHome, databaseRoot) {
   try {
     fiber = ctx.plugin(runtime.plugin, {
       enabled: true,
-      searchTimeoutMs: 100,
+      // Exercise the shipped default, including cold Worker startup after CLI installation.
+      // The exclusive-lock instance overrides this with a short, independently asserted deadline.
+      searchTimeoutMs,
       maxSearchResults: 5,
       searchByteBudget: 3_000,
       recallLimit: 2,
@@ -432,6 +442,19 @@ function publicDiagnostic(error) {
     .replace(/(?:\/[A-Za-z0-9._-]+){2,}/gu, '[REDACTED_PATH]')
     .replace(/[\r\n\t]+/gu, ' ')
     .slice(0, 240)
+}
+
+async function probeWorker(filename, databasePath) {
+  const start = performance.now()
+  const worker = new Worker(filename)
+  try {
+    return await new Promise(resolve => {
+      const timer = setTimeout(() => resolve({ status: 'probe-timeout' }), 2_000)
+      worker.once('message', message => { clearTimeout(timer); resolve({ status: message.status, elapsedMs: Math.round(performance.now() - start) }) })
+      worker.once('error', error => { clearTimeout(timer); resolve({ status: 'probe-error', diagnostic: publicDiagnostic(error) }) })
+      worker.postMessage({ id: 1, operation: 'discover', databasePath })
+    })
+  } finally { await worker.terminate() }
 }
 
 await main()

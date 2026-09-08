@@ -10,7 +10,7 @@ describe('standalone bundle manifest', () => {
 
     expect(manifest).toMatchObject({
       name: 'dsh-missher-memory',
-      version: '0.2.1-maintenance.0',
+      version: '0.3.0-cordis.0',
       private: false,
       type: 'module',
       repository: {
@@ -23,6 +23,7 @@ describe('standalone bundle manifest', () => {
       main: 'lib/index.js',
       types: 'lib/index.d.ts',
       exports: {
+        './core': { types: './lib/core.d.ts', import: './lib/core.js' },
         '.': { types: './lib/index.d.ts', import: './lib/index.js' },
         './typert': { types: './lib/typert.host.d.ts', default: './lib/typert.host.js' },
         './remote': {
@@ -32,7 +33,7 @@ describe('standalone bundle manifest', () => {
         './client': { default: './lib/client.js' },
         './package.json': './package.json',
       },
-      files: ['lib', 'cordis.patch.yml', 'AGENT.md', 'README.md', 'README.zh.md', 'SECURITY.md', 'DATA-RETENTION.md', 'LICENSE'],
+      files: ['lib', 'cordis.patch.yml', 'AGENT.md', 'CORDIS.md', 'README.md', 'README.zh.md', 'SECURITY.md', 'DATA-RETENTION.md', 'LICENSE'],
       dsh: {
         bundle: { patch: './cordis.patch.yml' },
         client: {

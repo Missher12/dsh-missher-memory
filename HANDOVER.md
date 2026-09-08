@@ -1,39 +1,58 @@
-# dsh-missher-memory 维护交接
+# dsh-missher-memory Cordis 升级交接
 
-## 独立源码与分支
+## 任务与来源
 
-- 仓库：`Missher12/dsh-missher-memory`。
-- 基线：`62b39596e17bad14787c6cf4f59d27962076a51b` / `main` / 0.2.0。
-- 本地仓库：`/Users/missher/Documents/ChatGPT/dsh-missher-memory`。
-- 维护工作树：`/Users/missher/Documents/ChatGPT/dsh-missher-memory/.worktrees/memory-maintenance`。
-- 分支：`maintenance/memory-audit-20260906`；最终完整 SHA 使用该工作树 `git rev-parse HEAD`，包旁 `dist/maintenance-evidence/source-revision.json` 同步记录。
-- 候选版本：`0.2.1-maintenance.0`，仅本地交付；没有推送、tag、Release 或远端 CI dispatch。
+用户明确选择 Cordis 并授权实施。本轮完成通用 Core 与 Harness/Brain 适配解耦，保持独立仓库和旧数据，不新增 MCP/HTTP/独立 CLI，不修改 Desktop 或 Evolution。
 
-## 完成内容
+- origin：`https://github.com/Missher12/dsh-missher-memory.git`。
+- 根仓库 main 基线：`62b39596e17bad14787c6cf4f59d27962076a51b` / 0.2.0。
+- 本轮开始 SHA：`887f2ca838452b76219827fdf11d4e1e089d73b1`，已有维护修复及 AGENT.md。
+- 工作树：`/Users/missher/Documents/ChatGPT/dsh-missher-memory/.worktrees/memory-maintenance`。
+- 分支：`maintenance/memory-audit-20260906`。
+- 候选版本：`0.3.0-cordis.0`；schema 2；只本地提交，不推送、tag 或发布。
+- 最终完整 SHA、父提交、修改列表与包哈希在 `dist/cordis-evidence/`；用 `git rev-parse HEAD` 核验，不用本交接文本形成自引用 SHA。
 
-本轮已盘点独立 manifest、入口、Host/Client/RPC、数据结构及全部测试布局。五项修复：遗忘清理派生胶囊、搜索包含已整理胶囊、召回总预算、严格相同正文整理、项目删除清理派生个人 FTS。schema 保持 2；不自动修复历史上已经误整理或已删除来源的胶囊。
+## 实现
 
-修改文件分组：
+1. 新增 `src/core.ts`，包导出 `./core`。通用 Context 只需要 provide/effect；服务名 `missherMemoryService`，不会占用旧 RPC 的 `missherMemory`。
+2. 新增 MemoryService：明确绑定、冻结项目 facade、默认禁止个人全局范围、search/get/propose、独立 admin 审核与遗忘、输入快照、队列与关闭。无 Harness 服务也能加载。
+3. 抽出 project-search，保持 Harness 工具接口与来源格式；修复已绑定空项目被错误报告为 project-unbound 的情况。
+4. Harness adapter 保留原捕获、RPC、设置页、整理；Brain adapter 单独管理 provider 的依赖和注销。Brain 缺失、恢复和移除不影响手动工具。
+5. key.bin 使用完整写入后原子发布；schema/FTS 初始化与迁移原子化；候选创建、审核及遗忘的相关状态在事务中检查。幂等重试不重复创建审计。定向 get 可追溯胶囊的归档来源。
+   已有数据库缺失密钥时，重新绑定返回 corrupt，保持密钥缺失与数据库字节不变，不生成错误替代密钥。
+6. 安装包新增 CORDIS.md、core JS/类型入口和共享 chunk。Host peer 包保持可选；上游 cordis 仅用于开发验证，不捆绑第二个 Cordis runtime。
+7. CI 增加独立 Cordis smoke 与对应证据，版本路径同步；未触发远端 CI。
 
-- 运行逻辑：`src/host/state-store.ts`、`memory-tool.ts`、`brain-provider.ts`、`consolidation-policy.ts`。
-- 回归：`tests/consolidation.spec.ts`、`memory-brain-provider.spec.ts`、`fts-search.spec.ts`、`schema-migration.spec.ts`、`host-activation.spec.ts`。
-- 包与验证：`package.json`、`scripts/native-smoke.mjs`、`scripts/verify-package.mjs`、`tests/manifest.spec.ts`、`tests/cross-platform-ci.spec.ts`、`.github/workflows/cross-platform.yml`（只同步候选包名，不触发 CI）。
-- 文档：`AGENT.md`、`README.md`、`README.zh.md`、`SECURITY.md`、`DATA-RETENTION.md`、`PROJECT_CONTEXT.md`、本文件、`docs/maintenance-audit-2026-09-06.zh.md`。`AGENT.md` 已加入包白名单和包验证器。
+## 修改文件
 
-## 验证与包
+核心：`src/core.ts`、`src/index.ts`、`src/host/memory-service.ts`、`project-search.ts`、`memory-tool.ts`、`harness-adapter.ts`、`brain-adapter.ts`、`state-store.ts`、`local-key.ts`。
 
-- 环境：本机 darwin-x64，Node 25.6.0，pnpm 11.7.0；原版 `@deepseek-ai/dsh` CLI 0.1.1-rc.2。
-- 基线：27 测试文件 / 109 测试通过。
-- 修复版：28 测试文件 / 117 测试通过；包含每项已复现 Bug 的回归、真实 v1 无 FTS 迁移后检索、故障迁移事务回滚、superseded 胶囊清理、Cordis 等待必需 Brain 服务。
-- `pnpm typecheck`、`pnpm build`、`pnpm pack`、package verifier、`git diff --check`；最终日志存放 `dist/maintenance-evidence/`。
-- 包：`dist/dsh-missher-memory-0.2.1-maintenance.0.tgz`；精确大小与 SHA-256 见 `dist/maintenance-evidence/package-verification.json`。
-- native CLI 在临时 DSH_HOME 安装→dump 配置→卸载→重装→恢复项目绑定和已审核检索→再次卸载；包运行于提供 synthetic tools/Brain 的 Cordis 容器。验证相邻数据/状态保留、外部合成库 hash 与 mtime 不变、隔离、搜索、候选审核、超时、缺库和坏库。
-- 所有记忆内容都是临时合成数据；没有读取真实记忆数据库作为测试素材。
+验证与打包：`tests/cordis-core.spec.ts`、`host-activation.spec.ts`、`manifest.spec.ts`、`package-contents.spec.ts`、`cross-platform-ci.spec.ts`；`scripts/cordis-smoke.mjs`、`native-smoke.mjs`、`verify-package.mjs`；`package.json`、`pnpm-lock.yaml`、`tsdown.config.ts`、`.github/workflows/cross-platform.yml`。
 
-## 明确限制与下一步
+文档：`CORDIS.md`、`AGENT.md`、中英文 README、SECURITY.md、DATA-RETENTION.md、PROJECT_CONTEXT.md、HANDOVER.md、Cordis 提案。精确 Git 路径列表以最终 source-revision.json 为准。密钥保护回归在 `tests/state-store.spec.ts`。
 
-**没有完成真实 Desktop Brain 注入/UI 验收。** 原版 Harness 缺 `missherBrain` 时整个插件不会激活；CLI 安装成功和合成 Brain smoke 不能替代该证据。Windows/ARM/Linux 本次没有运行原生验收，Node 最低支持版本本次未重跑。
+## 验证与可安装包
 
-新增能力具体设计见维护盘点：可选 Brain 适配器以支持原版手动检索；schema 3 的过期/替代/纠正；完整导出与恢复；胶囊来源/回滚 UI；自有 FTS Worker。用户尚未确认，未实施。Memory 不做 Evolution 规则晋升。
+包：`dist/dsh-missher-memory-0.3.0-cordis.0.tgz`；最终大小与 SHA-256 见 `dist/cordis-evidence/package-verification.json`。本轮验证：
 
-历史已生成胶囊不自动改写；现有 JSON 导出不是完整备份；遗忘仍保留 forgotten 候选正文。真实坏库恢复仅有失败开放保护，无备份导入流程。接续任务应先确认新增方案，继续本独立工作树，禁止修改 Desktop 或其他插件。未经发布指令不要 push/tag/Release。
+- 单元/集成：29 文件 / 121 测试，通过两种真实 Cordis 容器的审核、隔离、来源读取、重载；缺 Brain 时实际执行 Harness 工具；旧迁移、检索、损坏保护、回滚与 UI 单测仍通过。
+- typecheck/build/package verifier/git diff --check。
+- 独立包：临时目录导入 Core，不链接任何 Harness peer。上游 cordis 4.0.0-rc.9 与 @deepseek-ai/cordis 4.0.1 生命周期通过；4 个独立进程并发初始化/候选/审核，最终一条审核记录。
+- Node 25.6.0 / darwin-x64；Core 包也在最低 Node 22.19.0 运行上述 smoke。
+- Harness CLI 0.1.1-rc.2 真实安装、配置组合、卸载、重装；运行态采用 synthetic tools/Brain 的 Cordis 容器。验证项目隔离、捕获审核、恢复、外部库超时/缺失/损坏、相邻文件与状态保留、外部合成库 hash/mtime 不变。
+
+所有数据为临时合成数据；未读取真实记忆作测试。最终命令使用隔离 DSH_HOME，日志见 `dist/cordis-evidence/`。测试不等于实际模型工具调用或 Desktop 原生 UI。
+
+共享工作站并行复验时，既有 Worker 成功路径的 1000ms 预算出现超时；保留高并发及两 worker 的失败日志，最终全量采用 `pnpm test --maxWorkers=1`。不修改生产时限或这些单元测试的断言；多进程数据一致性另由 packaged smoke 验证。
+
+## 本轮排障
+
+CLI 安装后首次来源列表为空，诊断确认数据库 ready、项目候选有效，独立 Worker 探针成功耗时 122ms；旧 smoke 全程只给 100ms，冷启动未完成即取消。正常安装验收改用产品默认 1500ms；由于 SQLite 自身锁等待为 250ms，超时验收使用独立的 100ms 实例，保留强制锁库并断言 timeout。诊断探针只在 DSH_SMOKE_DEBUG=1 且初始快照失败时读取合成 fixture，不放宽生产查询限制。
+
+## 兼容性与剩余工作
+
+- Cordis Core 是通用服务，不自动为任意 Agent 注册工具；宿主必须加载兼容运行时并映射可信项目 facade。详见 CORDIS.md。
+- 上游 rc.9 的声明文件在 NodeNext 有无扩展名 re-export 问题；已验证 JS runtime，未声称修复上游类型包。Core 自身只依赖结构化 Context 类型。
+- 真实 Agent 模型、Desktop Brain 注入和设置页 UI 尚未验收；其他平台本轮未原生运行，不能用 CI 配置代替结果。
+- schema 2 未新增过期/纠正链/冲突解决；自有 SQLite 查询仍同步；完整备份恢复未实施；forgotten 候选正文仍保留。此前规划的这些增强继续独立推进，不混入本次 Cordis 接入完成声明。
+- 任何后续源码或打包文档修改都需要重建包并重绑最终证据。未经指令不 push/tag/Release，不编辑其他工作树或真实数据。
