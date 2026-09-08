@@ -10,7 +10,7 @@
 - 工作树：`/Users/missher/Documents/ChatGPT/dsh-missher-memory/.worktrees/memory-maintenance`。
 - 分支：`maintenance/memory-audit-20260906`。
 - 发布版本：`0.3.0-cordis.0`（预发布）；schema 2。2026-09-08 用户明确授权发布与 DSH 商店收录；仅本插件范围。
-- 最终完整 SHA、父提交、修改列表与包哈希在 `dist/cordis-evidence/`；用 `git rev-parse HEAD` 核验，不用本交接文本形成自引用 SHA。
+- 实现阶段的 SHA/包哈希在 `dist/cordis-evidence/`；当前发布版本以本文末尾的不可变 tag、Release 验收附件和 `dist/store-release/` 为准。文档 HEAD 可晚于发布 tag。
 
 ## 实现
 
@@ -53,7 +53,7 @@ CLI 安装后首次来源列表为空，诊断确认数据库 ready、项目候�
 
 - Cordis Core 是通用服务，不自动为任意 Agent 注册工具；宿主必须加载兼容运行时并映射可信项目 facade。详见 CORDIS.md。
 - 上游 rc.9 的声明文件在 NodeNext 有无扩展名 re-export 问题；已验证 JS runtime，未声称修复上游类型包。Core 自身只依赖结构化 Context 类型。
-- 真实 Agent 模型、Desktop Brain 注入和设置页 UI 尚未验收；其他平台本轮未原生运行，不能用 CI 配置代替结果。
+- 真实 Agent 模型、Desktop Brain 注入和设置页 UI 尚未验收；发布阶段四个平台的 CI 原生进程/CLI 验收已通过，详情见末尾发布记录。
 - schema 2 未新增过期/纠正链/冲突解决；自有 SQLite 查询仍同步；完整备份恢复未实施；forgotten 候选正文仍保留。此前规划的这些增强继续独立推进，不混入本次 Cordis 接入完成声明。
 - 任何后续源码或打包文档修改都需要重建包并重绑最终证据。本次已有发布指令；不编辑其他插件、Desktop 工作树或真实数据。商店 PR 仅添加本插件条目。
 
@@ -63,3 +63,12 @@ CLI 安装后首次来源列表为空，诊断确认数据库 ready、项目候�
 - 收录源：`awesome-dsh-plugin/awesome-dsh-plugin` 的 `data/plugins/Missher12__dsh-missher-memory.yml`，分类 memory；只提交这一条目，使用固定版本 `.tgz` Release URL。
 - 远端分支以 fast-forward 发布，不改写历史；包与证据绑定同一提交，公开下载后复核 SHA-256。
 - 发布/收录状态分别查询 GitHub Release、收录 PR、在线 `https://awesome-dsh-plugin.com/plugins.json`。PR 等待维护者合并期间，商店可能仍搜不到。公开验收记录在 `dist/store-release/`，不发布含本机路径的旧 source-revision.json。
+
+## 发布结果
+
+- 已发布 GitHub prerelease `v0.3.0-cordis.0`，源码完整 SHA `8a8c796b75f08995b7af7a49be9e0c5a5bc08fd4`。远端 main 已包含该提交；未修改本地根 main 工作树。
+- Release：https://github.com/Missher12/dsh-missher-memory/releases/tag/v0.3.0-cordis.0 。上传 CI canonical 包（177387 bytes）、`.sha256`、`release-verification.json`，三个附件匿名下载逐字节校验通过。
+- 分发包 SHA-256：`6b1a8a4fe4b5e90e94e9c6ef3406fa1347551efee45a8c352d5e0b57d810d886`。请勿用此前本地包的 hash 替代。
+- CI：https://github.com/Missher12/dsh-missher-memory/actions/runs/34241169065 ，五个 job 全绿；macOS Intel/ARM64、Windows x64、Linux x64 使用相同包，通过 121 项测试、Cordis lifecycle、Harness CLI 安装/卸载/重装恢复。均为临时合成数据，真实模型与 Desktop UI 仍未验收。
+- 商店 PR：https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/4671 ，只新增 `data/plugins/Missher12__dsh-missher-memory.yml`；提交时 OPEN，等待维护者。合并后还需检查网站目录是否已更新。
+- 发布材料/公开下载验收/PR 和商店快照：`dist/store-release/`。交接文档更新不会移动 tag、覆盖包或修改测试过的代码。
