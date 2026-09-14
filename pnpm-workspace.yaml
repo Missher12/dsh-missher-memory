@@ -1,0 +1,10 @@
+overrides:
+  "@deepseek-ai/dsh-invariants": "0.1.5-rc.2"
+  "@deepseek-ai/dsh-scope": "0.1.5-rc.2"
+  "@deepseek-ai/dsh-session-projection": "0.1.5-rc.2"
+  "@deepseek-ai/dsh-system-prompt": "0.1.5-rc.2"
+  "@deepseek-ai/dsh-code-runtime": "0.1.5-rc.2"
+  "@deepseek-ai/dsh-user-approval": "0.1.5-rc.2"
+  "@deepseek-ai/dsh-agent-loop": "0.1.5-rc.2"
+  "@deepseek-ai/dsh-session-persistence": "0.1.5-rc.2"
+  "@deepseek-ai/dsh-settings": "0.1.5-rc.2"

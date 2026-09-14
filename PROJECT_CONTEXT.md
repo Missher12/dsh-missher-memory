@@ -1,6 +1,35 @@
 # Cordis 长期记忆插件项目上下文
 
-## 当前摘要（2026-09-08）
+## 分发准备（2026-09-14）
+
+独立 `codex/distribution-20260914` 从冻结源码 `a31b6dd4c97a1793910c10a88d4304787dcecd4d` 准备 `0.3.1` 公开安装材料。只改 README 中英、Agent 接入说明和新增 INSTALL.md，修正实际设置入口为 Project Memory / 项目记忆；安装包保持原始 176873 bytes / SHA-256 `5bde1f688d6791954d890e2b958775abbdaffe06532464c6b23de362cb06ed49`，不重打同名包。
+
+原工作树的 0.3.2 和未提交文档保持原样。此次不包含 Workbench 消费者，不构建 Desktop，不调用真实模型或读取用户记忆。既有 Host 默认生命周期证据按运行时字节一致关系复用；本次只核对冻结包、客户端贡献入口和公开文档。GitHub 发布与商店条目更新由总指挥统一处理，未执行任何远端写入。
+
+
+## 0.3.1 正式交付候选身份
+
+本轮正式目标由总指挥指定为 0.3.1；当前仍仅本地候选，未推送、tag 或发布。已公开的 0.3.0-cordis.0（8a8c796b75f08995b7af7a49be9e0c5a5bc08fd4）与 S2/R7 同名内部候选分别保留，不覆盖或复用旧发布资产。
+
+从 ee9142d791e324ab0f77007de9186f4018b88251 只更新版本、当前安装说明和验证输出路径。运行时与默认能力不变；按包内 lib 文件逐字节对应关系沿用既有 19 项和 12 次 loopback 证据。新增版本/manifest 对应与严格声明消费检查，证据在 dist/release-0.3.1；最终桌面组合仍由总指挥真实消费。
+
+## 当前摘要（2026-09-13 R7）
+
+在 S2 提交 `1f0a5b7b362a062d991fefa59782b4870fc2e854` 上补齐默认能力验证。产品运行时代码、schema 和开关默认值未改：官方 Profile 中默认捕获、审核门槛、30 秒首次自动维护、卸载重装恢复均通过；现有 Brain 可选装载/移除/恢复时，召回的日志与 loopback 模型请求一致、每轮无重复且跨项目隔离。无 Brain 的原版宿主不提供自动召回。
+
+验收使用官方 npm 精确包 0.1.5-rc.2 / Cordis 4.0.2，以及 Desktop `d1e8bd9c6d49f980405888099087f931ddd26d83` 的现有 Brain 五文件只读测试快照。没有新增 Hub 或分发 Brain；已停用的真实 Brain 状态未改。12 次模型协议请求均到 127.0.0.1，没有真实账户请求。实际环境仍为 Intel macOS / Node 25.6.0；最终桌面组合、其他平台与真实 UI 待相应负责人验收。
+
+本轮源码/包哈希及命令见 `dist/r7/source-revision.json`，默认 smoke 见 `dist/r7/defaults-smoke.json`，Brain 来源见 `dist/r7/brain-fixture/provenance.json`。版本仍为未发布本地候选 0.3.0-cordis.0，必须按哈希区分。未推送或发布。
+
+## 2026-09-12 S2 历史摘要
+
+本轮只负责官方 Harness 0.1.5-rc.2 / Cordis 4.0.2 的绑定、审核、持久化、手动检索和卸载重装切片。独立工作树 `.worktrees/official-compat-20260912`，分支 `codex/memory-official-compat-20260912`，起点 `782617f5c5b4354677e7a49cf9a85665307ce104`。旧根和旧维护工作树保持不变。本轮没有推送、tag、发布或替换真实安装的授权。
+
+Client 改用官方 Cordis Context 和 ui-renderer slots 服务，依赖锁定目标官方版本。Core、数据库 schema 与默认捕获/召回/整理设置不变。包版本暂保留 0.3.0-cordis.0，仅交付本地候选；必须用本轮 `dist/s2/source-revision.json` 的 SHA/包哈希辨认，不能拿旧 Release 代替。
+
+本轮通过定向测试、类型检查、构建、包校验和真实官方 Profile 的三阶段合成验收。实际为 Intel macOS、Node 25.6.0；没有模型请求、Desktop UI 或自动召回验收，没有运行 Desktop 全构建或平台 CI。具体命令、结果与来源在 `dist/s2/`，实现说明见 `docs/official-compat-2026-09-12.zh.md`。
+
+## 2026-09-08 历史实现与发布摘要
 
 独立仓库 `Missher12/dsh-missher-memory`；Cordis 预发布版本 `0.3.0-cordis.0`，schema 2。用户已授权按 Cordis 方向实现，MCP/CLI/HTTP 方案撤回。Core 与 Harness、Brain 适配已分离；本节取代此前“整个插件必需 Brain”的描述。
 

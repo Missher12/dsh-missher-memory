@@ -1,5 +1,27 @@
 # dsh-missher-memory Cordis 升级交接
 
+## 0.3.1 正式交付候选身份
+
+本轮正式目标由总指挥指定为 0.3.1；当前仍仅本地候选，未推送、tag 或发布。已公开的 0.3.0-cordis.0（8a8c796b75f08995b7af7a49be9e0c5a5bc08fd4）与 S2/R7 同名内部候选分别保留，不覆盖或复用旧发布资产。
+
+从 ee9142d791e324ab0f77007de9186f4018b88251 只更新版本、当前安装说明和验证输出路径。运行时与默认能力不变；按包内 lib 文件逐字节对应关系沿用既有 19 项和 12 次 loopback 证据。新增版本/manifest 对应与严格声明消费检查，证据在 dist/release-0.3.1；最终桌面组合仍由总指挥真实消费。
+
+## 2026-09-13 R7 默认能力收尾
+
+沿用 S2 的运行时，不增加算法或 Hub。`scripts/official-smoke.mjs --defaults <existing-brain-fixture>` 在三个进程中验证默认捕获/召回/维护及卸载重装；`scripts/prepare-brain-fixture.mjs` 从锁定 Desktop SHA 提取既有 Brain 五文件并转译到忽略的测试目录，源码和产物哈希均记录，绝不加入 Memory 包。
+
+Memory 默认开关保持开启，真实的首次 30 秒维护定时器执行。只有验收消费者替代 headless 输入、使用 native 工具模式、关闭官方标题模型调用，并把模型 provider 指向进程内 loopback 服务。记忆材料、旧日期和数据库均为合成数据；测试只修改测试库时间，不加生产时钟后门。
+
+当前默认能力验收通过，无新增 Memory 产品兼容阻断。无 Brain 的宿主仅缺自动召回；最终增强包 Brain 组合未提供，因此测试使用现有 Desktop 基线快照，交由总代按最终组合复验受影响路径。源码与包信息见 `dist/r7/`；最终报告按分配写入 Task 3 Memory 报告。仅本地提交，不推送发布。
+
+## 2026-09-12 S2 接续
+
+当前切片从 `782617f5c5b4354677e7a49cf9a85665307ce104` 在 `.worktrees/official-compat-20260912` / `codex/memory-official-compat-20260912` 实施。官方对照 `fb2c4b9e698e30edb738bca4cf0618587db7d203` / 0.1.5-rc.2，Desktop 仅参考 `d1e8bd9c6d49f980405888099087f931ddd26d83`。后面的发布记录属于历史，本轮不承接发布授权。
+
+已修正 peer、旧 Client runtime、slots 声明和装配依赖；增加 `scripts/official-smoke.mjs` 与 Profile 测试消费者。实际官方 CLI/Tools/Agent 验证手动记忆闭环，测试配置关闭自动捕获/召回/整理，真实默认不改。依赖来源、命令、最终 SHA 和候选包哈希归档于 `dist/s2/`；发布 tag 未修改。
+
+保留限制：同版本号本地候选不得冒充旧 Release；Node 25.6.0 / Intel macOS 是本轮实际环境；Client 编译与注册测试不是浏览器 UI 验收；自动召回继续等待统一设计。此切片完成后等待总指挥，不扩张或发布。
+
 ## 任务与来源
 
 用户明确选择 Cordis 并授权实施。本轮完成通用 Core 与 Harness/Brain 适配解耦，保持独立仓库和旧数据，不新增 MCP/HTTP/独立 CLI，不修改 Desktop 或 Evolution。

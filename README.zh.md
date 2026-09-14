@@ -2,11 +2,34 @@
 
 [English](README.md) | 中文
 
+`0.3.1` 面向官方 Harness `0.1.5-rc.2` / Cordis `4.0.2`，提供按项目隔离、先审核后检索的长期记忆。安装使用固定版本包；[安装与验收指南](INSTALL.md) 包含商店入口、一条命令和 Agent 安装提示。
+
 [![跨平台 Harness 验证](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml/badge.svg)](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml)
 
 `dsh-missher-memory` 是可独立安装的 DeepSeek Harness bundle，用于恢复超级长项目的架构、决定、进度、失败经验和下一步。当前包包含索引召回和可逆重复记忆整理；它不修改 Harness 核心，也不复制或改写现有旧记忆数据库。
 
 新电脑使用通用 Cordis 服务时，请阅读 [Cordis 接入指南](CORDIS.md)，加载 `dsh-missher-memory/core`。既有 Harness 用户继续阅读 [Agent 接入指南](AGENT.md)。Core 提供不依赖 Harness 的 `missherMemoryService`；Brain 现在仅影响 Harness 自动召回。
+
+## 安装
+
+前置条件：已安装官方 DeepSeek Harness `0.1.5-rc.2`，`dsh` 在 PATH 中，Node 为 `^22.19.0` 或 `>=24.0.0`。本包按 Cordis `4.0.2` 验证；其他宿主版本需另行验收。无需 Python、原生编译、Brain 或旧记忆数据库；Brain 仅用于可选自动召回。
+
+在 DSH Market 搜索 `dsh-missher-memory`，核对仓库为 `Missher12/dsh-missher-memory`，查看条目的版本后安装。商店条目由独立目录维护；若仍显示 `0.3.0-cordis.0`，请使用下方固定 `0.3.1` 命令。
+
+```sh
+dsh plugin --profile web add https://github.com/Missher12/dsh-missher-memory/releases/download/v0.3.1/dsh-missher-memory-0.3.1.tgz
+```
+
+[下载 0.3.1 安装包](https://github.com/Missher12/dsh-missher-memory/releases/download/v0.3.1/dsh-missher-memory-0.3.1.tgz)（176873 bytes，SHA-256：`5bde1f688d6791954d890e2b958775abbdaffe06532464c6b23de362cb06ed49`）。离线安装时把命令中的 URL 换成下载文件的路径。
+
+安装后运行 `dsh --profile web --dump-config`，核对 `dsh-missher-memory` 和 `missher-memory` 均存在；随后重启同一 `web` profile 的 Harness。配置存在仅证明安装组合成功，继续在“设置 → 项目记忆”绑定，并实际调用 `memory_search`。
+
+给 Agent 的一句话：
+
+> 请按 https://github.com/Missher12/dsh-missher-memory/blob/main/INSTALL.md 核对宿主版本，在当前 web profile 安装固定 0.3.1 包，协助我在设置的项目记忆页确认绑定，并实际调用 memory_search 验证；保留现有数据。
+
+新安装无需 `vectors.db`；绑定后使用 `$DSH_HOME/missher-memory/state.db`。如需关联已有旧记忆，详见[安装指南](INSTALL.md)，旧来源始终只读。
+
 
 ## 平台支持
 
@@ -23,19 +46,6 @@ Core 是纯 JavaScript，运行时只导入 Node 内建模块；Harness 适配�
 - 新绑定项目默认开启自动召回。它把已审核原子、可逆胶囊和可选旧记忆贡献给 Desktop Brain Hub；只有 Brain Hub 会追加一条可见、带来源的召回消息。
 - 至少存放七天、未固定且正文完全重复的已审核原子会自动整理；来源只归档不删除，回滚胶囊会逐条恢复来源和 FTS 索引。
 - 数据库缺失、损坏、路径不安全或查询超时时，插件返回稳定状态并失败开放，不阻止 Harness 启动和会话。
-
-## 安装
-
-需要 DeepSeek Harness 0.1.x Host（Node `^22.19.0` 或 `>=24`）。使用交付的 tarball，不需要 Python、shell 脚本或原生依赖构建：
-
-```sh
-dsh plugin --profile web add https://github.com/Missher12/dsh-missher-memory/releases/download/v0.3.0-cordis.0/dsh-missher-memory-0.3.0-cordis.0.tgz
-dsh --profile web --dump-config
-```
-
-配置中同时出现 `dsh-missher-memory` 和 `missher-memory` 即表示 bundle patch 已进入 profile，不代表运行时已激活。Harness Bundle 使用 `tools` 和 `dshHomePath`；独立 Brain 适配器等待 `missherBrain`，缺少它不再影响手动搜索。重启兼容的 Harness Host 后，在“设置 → 超级记忆”完成首次绑定，并确认当前 Agent 能实际调用 `memory_search`。
-
-全新 Windows/macOS 安装不需要 `vectors.db`：内置项目记忆在用户确认绑定后使用插件自有的 `state.db`。`vectors.db` 只是兼容旧记忆的可选只读来源。如果它不在默认的 `$HOME/.local/share/missher-memory/tencentdb/vectors.db`，启动 Harness 前可把 `MISSHER_TENCENTDB_DIR` 设为包含 `vectors.db` 的现有绝对目录。插件不会创建缺失目录或空数据库，也拒绝符号链接和逃逸路径。
 
 ## 首次绑定
 
@@ -54,6 +64,8 @@ dsh --profile web --dump-config
 memory_search({ query: "packaged smoke", scope: "project", limit: 5 })
 ```
 
+已绑定的新项目应返回 `status: "ready"` 和空 `results`；这证明真实工具可用，不证明已有记忆。返回 `project-unbound` 时先确认绑定；工具不存在时检查 profile 和宿主服务。完整的合成记录审核后检索验收见 [INSTALL.md](INSTALL.md)。
+
 `scope` 可为 `project` 或 `personal`。查询按字面量处理，不接受 FTS 运算符语义；结果受条数和 UTF-8 字节预算限制。搜索不会创建 `state.db`，也不会触发候选捕获。
 
 ## 候选审核与召回
@@ -68,7 +80,7 @@ memory_search({ query: "packaged smoke", scope: "project", limit: 5 })
 
 插件自有状态位于 `$DSH_HOME/missher-memory/`，主要包括权限受限的 `state.db` 和本机密钥。候选正文和批准正文保存在 `state.db`；项目别名是不可逆摘要，外部 session 标识使用本机密钥加密。`DATA-RETENTION.md` 定义完整保留规则，`SECURITY.md` 定义威胁模型。
 
-先在设置页导出或删除需要处理的项目，再卸载：
+卸载前可按需导出项目记忆；要保留重装恢复能力，请不要删除项目数据。卸载命令：
 
 ```sh
 dsh plugin --profile web remove dsh-missher-memory
@@ -88,8 +100,8 @@ dsh --profile web --dump-config
 发布前可运行：
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.3.0-cordis.0.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.3.0-cordis.0.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.3.1.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.3.1.tgz
 ```
 
 `native-smoke.mjs` 只使用合成数据库；传入 `--cli /absolute/path/to/dsh-cli.js` 时还会在临时 profile 中真实安装、组合并卸载 tarball。

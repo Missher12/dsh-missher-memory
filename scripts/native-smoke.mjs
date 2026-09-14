@@ -203,7 +203,7 @@ async function main() {
 function parseArgs(args) {
   const options = {
     platform: 'current',
-    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.3.0-cordis.0.tgz'),
+    archive: join(pluginRoot, 'dist', 'dsh-missher-memory-0.3.1.tgz'),
     cli: undefined,
     profile: 'memory-smoke',
   }

@@ -41,7 +41,7 @@ describe('cross-platform CI contract', () => {
     expect(workflow).toContain('scripts/verify-package.mjs')
     expect(workflow).toContain('scripts/cordis-smoke.mjs')
     expect(workflow).toContain('scripts/native-smoke.mjs --platform ${{ matrix.platform }}')
-    expect(workflow).toContain('--archive ./dist/universal/dsh-missher-memory-0.3.0-cordis.0.tgz')
+    expect(workflow).toContain('--archive ./dist/universal/dsh-missher-memory-0.3.1.tgz')
     expect(workflow).toContain('--cli ./.harness-036/apps/cli/lib/bin.js')
     expect(workflow).toContain('NODE_OPTIONS: --max-old-space-size=6144')
   })

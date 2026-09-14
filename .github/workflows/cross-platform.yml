@@ -40,7 +40,7 @@ jobs:
           pnpm typecheck
           pnpm build
           pnpm pack --pack-destination ./dist
-          node scripts/verify-package.mjs ./dist/dsh-missher-memory-0.3.0-cordis.0.tgz > ./dist/package-verification.json
+          node scripts/verify-package.mjs ./dist/dsh-missher-memory-0.3.1.tgz > ./dist/package-verification.json
 
       - name: Upload canonical universal package
         uses: actions/upload-artifact@v7
@@ -48,7 +48,7 @@ jobs:
           name: dsh-missher-memory-universal
           if-no-files-found: error
           path: |
-            dist/dsh-missher-memory-0.3.0-cordis.0.tgz
+            dist/dsh-missher-memory-0.3.1.tgz
             dist/package-verification.json
 
   native-plugin:
@@ -117,12 +117,12 @@ jobs:
           path: dist/universal
 
       - name: Verify canonical package on native runner
-        run: node scripts/verify-package.mjs ./dist/universal/dsh-missher-memory-0.3.0-cordis.0.tgz > ./dist/package-verification.json
+        run: node scripts/verify-package.mjs ./dist/universal/dsh-missher-memory-0.3.1.tgz > ./dist/package-verification.json
 
       - name: Verify independent Cordis service and concurrent lifecycle
         env:
           DSH_HOME: ${{ runner.temp }}/dsh-memory-ci
-        run: node scripts/cordis-smoke.mjs ./dist/universal/dsh-missher-memory-0.3.0-cordis.0.tgz > ./dist/cordis-smoke.json
+        run: node scripts/cordis-smoke.mjs ./dist/universal/dsh-missher-memory-0.3.1.tgz > ./dist/cordis-smoke.json
 
       - name: Build exact Harness CLI
         working-directory: .harness-036
@@ -135,7 +135,7 @@ jobs:
       - name: Run native install and lifecycle smoke
         env:
           DSH_HOME: ${{ runner.temp }}/dsh-memory-ci
-        run: node scripts/native-smoke.mjs --platform ${{ matrix.platform }} --archive ./dist/universal/dsh-missher-memory-0.3.0-cordis.0.tgz --cli ./.harness-036/apps/cli/lib/bin.js > ./dist/native-smoke.json
+        run: node scripts/native-smoke.mjs --platform ${{ matrix.platform }} --archive ./dist/universal/dsh-missher-memory-0.3.1.tgz --cli ./.harness-036/apps/cli/lib/bin.js > ./dist/native-smoke.json
 
       - name: Upload acceptance evidence
         uses: actions/upload-artifact@v7
@@ -143,7 +143,7 @@ jobs:
           name: dsh-missher-memory-${{ matrix.artifact }}
           if-no-files-found: error
           path: |
-            dist/universal/dsh-missher-memory-0.3.0-cordis.0.tgz
+            dist/universal/dsh-missher-memory-0.3.1.tgz
             dist/package-verification.json
             dist/native-smoke.json
             dist/cordis-smoke.json

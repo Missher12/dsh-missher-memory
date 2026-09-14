@@ -2,11 +2,34 @@
 
 English | [中文](README.zh.md)
 
+`0.3.1` targets official Harness `0.1.5-rc.2` / Cordis `4.0.2` and provides project-scoped memory reviewed before search. Install the fixed-version package; the [installation and acceptance guide](INSTALL.md) covers DSH Market, the one-line command, and an Agent setup prompt.
+
 [![Cross-platform Harness verification](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml/badge.svg)](https://github.com/Missher12/dsh-missher-memory/actions/workflows/cross-platform.yml)
 
 `dsh-missher-memory` is an independently installable DeepSeek Harness bundle for recovering architecture, decisions, progress, failed approaches, and next steps in long-running projects. The current package includes indexed recall and reversible duplicate consolidation. It neither changes Harness core nor copies or modifies an existing legacy database.
 
 For a fresh computer, use [the Cordis service guide](CORDIS.md) for a reusable `dsh-missher-memory/core` plugin, or [the Harness Agent guide](AGENT.md) for the existing Bundle. Core provides `missherMemoryService` without Harness services. Brain is optional and only controls Harness automatic recall.
+
+## Install
+
+Prerequisites: official DeepSeek Harness `0.1.5-rc.2`, `dsh` on PATH, and Node `^22.19.0` or `>=24.0.0`. This package was verified with Cordis `4.0.2`; other host versions need separate acceptance. Python, native builds, Brain, and a legacy database are not required. Brain only enables optional automatic recall.
+
+In DSH Market, search for `dsh-missher-memory`, confirm the repository is `Missher12/dsh-missher-memory`, and inspect the listed version before installing. The market uses a separately maintained catalog; if it still lists `0.3.0-cordis.0`, use the fixed `0.3.1` command below.
+
+```sh
+dsh plugin --profile web add https://github.com/Missher12/dsh-missher-memory/releases/download/v0.3.1/dsh-missher-memory-0.3.1.tgz
+```
+
+[Download the 0.3.1 package](https://github.com/Missher12/dsh-missher-memory/releases/download/v0.3.1/dsh-missher-memory-0.3.1.tgz) (176873 bytes; SHA-256: `5bde1f688d6791954d890e2b958775abbdaffe06532464c6b23de362cb06ed49`). For offline installation, replace the URL with the downloaded file path.
+
+After installing, run `dsh --profile web --dump-config` and confirm both `dsh-missher-memory` and `missher-memory`. Restart Harness using the same `web` profile. Configuration proves composition only; continue with Settings → Project Memory, explicit binding, and a real `memory_search` tool call.
+
+One sentence for your Agent:
+
+> Follow https://github.com/Missher12/dsh-missher-memory/blob/main/INSTALL.md to check host compatibility, install the fixed 0.3.1 package in the current web profile, help me confirm the project binding in Settings → Project Memory, and call memory_search to verify activation while preserving existing data.
+
+A new installation needs no `vectors.db`; binding initializes `$DSH_HOME/missher-memory/state.db`. For an existing read-only legacy source, follow the [installation guide](INSTALL.md).
+
 
 ## Platform support
 
@@ -23,19 +46,6 @@ Windows ARM and Linux ARM are not claimed until stable native runners and a ship
 - Automatic recall defaults on for newly bound projects. It contributes reviewed atoms, reversible capsules, and optional legacy rows to the Desktop Brain Hub; the Hub is the only component that appends one visible, source-attributed recall message.
 - Old, unpinned, exact duplicate reviewed atoms are consolidated automatically after seven days. Sources are archived rather than deleted, and rolling back a capsule restores every source and FTS row exactly.
 - Missing, damaged, unsafe, or timed-out databases return stable states and fail open without blocking Harness startup or a session.
-
-## Install
-
-The plugin requires a DeepSeek Harness 0.1.x Host with Node `^22.19.0` or `>=24`. The delivered tarball needs no Python, shell script, or native dependency build:
-
-```sh
-dsh plugin --profile web add https://github.com/Missher12/dsh-missher-memory/releases/download/v0.3.0-cordis.0/dsh-missher-memory-0.3.0-cordis.0.tgz
-dsh --profile web --dump-config
-```
-
-The configuration contains both `dsh-missher-memory` and `missher-memory` when the bundle patch has been composed into the profile; this does not prove runtime activation. The Harness Bundle uses `dshHomePath` and `tools`. The separate Brain adapter waits for `missherBrain`; manual search remains available without it. Restart a compatible Harness Host and finish the first binding in Settings → Super Memory, then verify that the current Agent can call `memory_search`.
-
-A fresh Windows or macOS install needs no `vectors.db`: after explicit project binding, built-in project memory uses the plugin-owned `state.db`. A `vectors.db` is only an optional, read-only source for legacy memory. If it is not at `$HOME/.local/share/missher-memory/tencentdb/vectors.db`, you may set `MISSHER_TENCENTDB_DIR` to the existing absolute directory that contains it before starting Harness. The plugin never creates a missing directory or empty database and rejects links and escaping paths.
 
 ## First binding
 
@@ -54,6 +64,8 @@ The model or user can explicitly call:
 memory_search({ query: "packaged smoke", scope: "project", limit: 5 })
 ```
 
+A newly bound project should return `status: "ready"` with empty `results`; this proves an actual tool call, not stored memory. Complete binding if it returns `project-unbound`; inspect the profile and host services if the tool is absent. See [INSTALL.md](INSTALL.md) for a synthetic capture, approval, and retrieval check.
+
 `scope` is `project` or `personal`. The query is interpreted as literal text rather than FTS operators, and results are bounded by count and UTF-8 bytes. Search never creates `state.db` and never triggers candidate capture.
 
 ## Candidate review and recall
@@ -68,7 +80,7 @@ Automatic recall uses only reviewed content and explicitly bound external source
 
 Plugin-owned state lives under `$DSH_HOME/missher-memory/`, primarily in permission-restricted `state.db` and a local key. Candidate and approved text remain readable in `state.db`; project aliases are irreversible digests and external session identifiers are encrypted with the local key. `DATA-RETENTION.md` defines the complete retention rules and `SECURITY.md` defines the threat model.
 
-Export or delete projects in Settings as needed, then uninstall:
+Optionally export project memory before uninstalling. Keep project data if you want reinstall recovery:
 
 ```sh
 dsh plugin --profile web remove dsh-missher-memory
@@ -88,13 +100,13 @@ Uninstall removes the bundle and profile patch but preserves `$DSH_HOME/missher-
 Before distribution, run:
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.3.0-cordis.0.tgz
-node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.3.0-cordis.0.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.3.1.tgz
+node scripts/native-smoke.mjs --archive dist/dsh-missher-memory-0.3.1.tgz
 ```
 
 `native-smoke.mjs` uses synthetic data only. Passing `--cli /absolute/path/to/dsh-cli.js` additionally installs, composes, and removes the tarball in a temporary profile.
 
-## Cordis prerelease status
+## Previous Cordis prerelease
 
 `0.3.0-cordis.0` is a prerelease. Download the prebuilt package and check version-specific verification in [the release notes](https://github.com/Missher12/dsh-missher-memory/releases/tag/v0.3.0-cordis.0). Store inclusion is separate and depends on the curated registry accepting the entry.
 

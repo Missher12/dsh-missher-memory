@@ -10,7 +10,7 @@ describe('standalone bundle manifest', () => {
 
     expect(manifest).toMatchObject({
       name: 'dsh-missher-memory',
-      version: '0.3.0-cordis.0',
+      version: '0.3.1',
       private: false,
       type: 'module',
       repository: {
@@ -38,7 +38,7 @@ describe('standalone bundle manifest', () => {
         bundle: { patch: './cordis.patch.yml' },
         client: {
           inject: [
-            '@deepseek-ai/dsh-client-runtime',
+            '@deepseek-ai/dsh-client-ui-renderer',
             '@deepseek-ai/dsh-client-ui-settings',
             '@deepseek-ai/dsh-client-locale',
             '@deepseek-ai/dsh-api-remotes',
@@ -66,7 +66,7 @@ describe('standalone bundle manifest', () => {
       '@deepseek-ai/dsh-agent-loop',
       '@deepseek-ai/dsh-api-remotes',
       '@deepseek-ai/dsh-client-locale',
-      '@deepseek-ai/dsh-client-runtime',
+      '@deepseek-ai/dsh-client-ui-renderer',
       '@deepseek-ai/dsh-client-ui-settings',
       '@deepseek-ai/dsh-client-ui-slots',
       '@deepseek-ai/dsh-llm',

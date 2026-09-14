@@ -2,14 +2,14 @@
 
 本包提供两个入口：`dsh-missher-memory/core` 是通用 Cordis 服务；`dsh-missher-memory` 是兼容已有安装方式的 Harness Bundle。Core 没有 Harness、Brain、React 或 Cordis 包的运行时 import，只通过宿主提供的 Cordis context 注册服务。
 
-当前候选版为 `0.3.0-cordis.0`。运行需要 Node `^22.19.0 || >=24.0.0`；具体已验收版本与平台见交付说明。测试目标为上游 `cordis@4.0.0-rc.9` 和 `@deepseek-ai/cordis@4.0.1`。其他 Cordis 主版本和非 Cordis Agent 不在直接兼容承诺内。
+当前候选版为 `0.3.1`。运行需要 Node `^22.19.0 || >=24.0.0`；具体已验收版本与平台见交付说明。测试目标为上游 `cordis@4.0.0-rc.9` 和 `@deepseek-ai/cordis@4.0.2`。其他 Cordis 主版本和非 Cordis Agent 不在直接兼容承诺内。
 
 ## 新电脑先安装，再核验服务
 
 在宿主的项目目录安装可信本地包。以下示例使用上游 Cordis；已有 Harness 用户继续按 [AGENT.md](AGENT.md) 安装 Bundle。
 
 ```sh
-npm install /absolute/path/dsh-missher-memory-0.3.0-cordis.0.tgz cordis@4.0.0-rc.9
+npm install /absolute/path/dsh-missher-memory-0.3.1.tgz cordis@4.0.0-rc.9
 ```
 
 由操作者指定绝对状态目录 `MISSHER_MEMORY_HOME`，然后运行以下 ESM 文件。这个环境变量由示例读取，插件不会自动扫描电脑寻找记忆。此检查不会创建状态文件。
@@ -95,8 +95,8 @@ sourceId 应由宿主生成、稳定且不含凭据，不用它存储路径或�
 维护仓库运行 `pnpm test`、`pnpm typecheck`、`pnpm build`，打包后执行：
 
 ```sh
-node scripts/verify-package.mjs dist/dsh-missher-memory-0.3.0-cordis.0.tgz
-node scripts/cordis-smoke.mjs dist/dsh-missher-memory-0.3.0-cordis.0.tgz
+node scripts/verify-package.mjs dist/dsh-missher-memory-0.3.1.tgz
+node scripts/cordis-smoke.mjs dist/dsh-missher-memory-0.3.1.tgz
 ```
 
 Cordis smoke 把包解到临时目录，不链接 Harness 依赖，用两种真实 Cordis 容器调用 Core，并以四个独立进程检查并发初始化和单次审核。所有内容是合成数据。它不等于真实 Agent 模型调用、Desktop 设置页或 Brain 注入验收；Harness CLI 安装/卸载另由 native-smoke 验证。

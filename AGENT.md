@@ -40,6 +40,8 @@ You need these items:
 
 You do not need `vectors.db` for a new installation. The plugin creates its own state only after an explicit project binding. An existing `vectors.db` is an optional, read-only legacy source.
 
+For the fixed release command, checksum, DSH Market path, and setup acceptance, follow [INSTALL.md](INSTALL.md). The frozen package contains the documentation from its source commit; the repository guide contains subsequent setup corrections.
+
 ## Install the Bundle once
 
 Run these commands in a shell. Replace `archive_path` with the exact package path and keep the profile name consistent.
@@ -65,7 +67,7 @@ The directory must already exist. The plugin rejects symbolic links, escaping pa
 
 Check activation in this order:
 
-1. Open Settings → Super Memory and confirm the page loads.
+1. Open Settings → Project Memory and confirm the page loads.
 2. Open a top-level session in the target project.
 3. Confirm the Agent tool list contains `memory_search`.
 4. If the tool is missing, stop memory calls and report that the plugin is not active.
@@ -77,7 +79,7 @@ The command-line interface (CLI) can prove profile installation and composition.
 The first binding gives the plugin a trusted project boundary. Complete it once for each project or worktree:
 
 1. Open the target project as a top-level Harness session.
-2. In Settings → Super Memory, inspect the basename, short hash, source counts, and time ranges.
+2. In Settings → Project Memory, inspect the basename, short hash, source counts, and time ranges.
 3. Select only legacy sources that belong to this project.
 4. Confirm the binding or link a worktree candidate to an existing project.
 5. Review the candidate inbox before approving any captured memory.
@@ -149,7 +151,7 @@ Memory stores reviewed facts. Evolution owns rule promotion and rule lifecycle. 
 Mark the setup ready only after every check passes:
 
 - The profile dump contains both plugin identifiers
-- Settings shows Super Memory
+- Settings shows Project Memory
 - The Agent tool list contains `memory_search`
 - A bound project search returns `ready` or a documented optional-source status
 - A second project returns no rows from the first project
