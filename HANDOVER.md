@@ -96,3 +96,17 @@ CLI 安装后首次来源列表为空，诊断确认数据库 ready、项目候�
 - 发布材料/公开下载验收/PR 和商店快照：`dist/store-release/`。交接文档更新不会移动 tag、覆盖包或修改测试过的代码。
 
 商店检查补充（2026-09-08）：PR #4671 的 Submission gate 已通过；PR check 在整站构建阶段被上游三个 wwweljf/dsh-plugins 条目的 `no added-date derivable` 错误阻断。未修改这些其他插件条目；已在 PR 正文附上 run 34242256495 和错误证据，等待上游修复与维护者审核。此阻断不影响已发布包的四平台验收。
+
+## 商店状态订正与一键安装缺陷（2026-09-21）
+
+订正上文：PR #4671 已于 2026-09-11T23:30:44Z 由维护者 fkysly 合并，条目已在线上目录中（对照 2026-09-20 快照，4062 条；本条目保留 2026-09-08 added-date）。"等待上游审核/合并" 已不是当前状态。
+
+但**商店的一键安装按钮仍然失败**，这是市场缺陷而非发布缺陷。`dshmarket@1.10.1` 在 `installTargetFor()` 里决定 pnpm 目标，优先级是 `npm` 名，然后 `github:owner/repo`；它**从不读取目录已提供的 `tarball` 字段**（本条目 `npm` 为 null，`tarball` 指向固定的 v0.3.1 归档）。因此市场去装 GitHub 源码仓库，而不是声明的预编译归档。
+
+该仓库的 `github:` 安装不可能产生可加载入口：`lib/` 按设计被 gitignore，而 pnpm 默认不执行 git 依赖的构建脚本。在 Windows 上用宿主内置 pnpm 11.7.0 复现：`pnpm add github:Missher12/dsh-missher-memory` 退出码 0，但只得到 package.json、README、LICENSE、cordis.patch.yml，没有 `lib/`。市场的假成功守卫随后发现 `main`（`lib/index.js`）缺失，拒绝保留会 brick 启动的包并报 "nothing installable: the plugin(s) need a build step …"——把市场选错目标的问题误记为本插件的发布问题。
+
+可用路径（2026-09-21 实测）：目录自带的安装行 `dsh plugin --profile <p> add "<tarball-url>"` 可正常安装（归档内含 `lib/`）；同一归档用本地 `file:<...>.tgz` 安装同样可行。
+
+本地核验：已安装归档与官方 Release 资产逐字节一致——176873 bytes，SHA-256 `5bde1f688d6791954d890e2b958775abbdaffe06532464c6b23de362cb06ed49`，与 `dsh-missher-memory-0.3.1.tgz.sha256` 相同；宿主模块可导入并导出 Cordis 接口。未重建包、未移动 tag，`lib/` 仍不入库。
+
+上游修复方向：`installTargetFor()` 应让校验过的目录 `tarball` 优先于源码仓库（`tarball` → `npm` → `github`）。上报到市场仓库 `dsh-market/dsh-market`，不要改 Desktop 或本地市场缓存来掩盖。

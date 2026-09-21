@@ -91,3 +91,5 @@ Core 不自动读取其他 Agent 的会话；宿主负责把可信项目上下�
 - [商店收录 PR #4671](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/4671)：只新增本插件 YAML；提交时 OPEN，等待上游审核/合并。在线 plugins.json 当时仍无该条目，不能宣称已经可搜索。
 
 商店检查补充（2026-09-08）：PR #4671 的 Submission gate 已通过；PR check 在整站构建阶段被上游三个 wwweljf/dsh-plugins 条目的 `no added-date derivable` 错误阻断。未修改这些其他插件条目；已在 PR 正文附上 run 34242256495 和错误证据，等待上游修复与维护者审核。此阻断不影响已发布包的四平台验收。
+
+商店状态订正（2026-09-21）：PR #4671 已于 2026-09-11T23:30:44Z 由 fkysly 合并，条目已在线上目录（2026-09-20 快照，4062 条），不再处于"等待合并"。但商店一键安装仍失败：`dshmarket@1.10.1` 的 `installTargetFor()` 优先 `npm`、其次 `github:owner/repo`，**忽略目录已提供的 `tarball` 字段**，于是去装源码仓库；而 `lib/` 被 gitignore 且 pnpm 默认不跑 git 依赖构建脚本，因此永远装不出可加载入口，守卫报 "nothing installable"。目录自带的 `dsh plugin add "<tarball-url>"` 行可用（归档内含 `lib/`）。已安装归档与官方资产逐字节一致（176873 bytes，SHA-256 `5bde1f68…cb06ed49`）。详见 `HANDOVER.md` 同名小节。
